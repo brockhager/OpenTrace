@@ -18,6 +18,19 @@ suggestionLinks.forEach(link => {
   link.addEventListener('click', (e) => {
     e.preventDefault();
     const query = link.getAttribute('data-query');
+    if (!query) return;
+
+    // If the app is opened via file:// or origin is null, do a navigation to persons page
+    // so that the request uses HTTP rather than being a blocked file:// fetch
+    const origin = window.location && window.location.origin ? window.location.origin : '';
+    const isLocalFile = window.location.protocol === 'file:' || origin === 'null' || origin === '';
+    if (isLocalFile) {
+      // Navigate to persons page with query in URL so that persons.html will run the search on load
+      window.location.href = `persons.html?q=${encodeURIComponent(query)}`;
+      return;
+    }
+
+    // Otherwise just fill the search input and trigger the in-page AJAX search
     if (queryInput) {
       queryInput.value = query;
       if (form) {
