@@ -352,11 +352,13 @@ if (loadPersonsBtn) {
         headers: getAuthHeaders()
       });
       const persons = payload.persons || [];
-      if (!persons.length) {
+      // Filter out inactive persons on client side as well (defensive)
+      const activePersons = persons.filter(p => p.is_active !== false);
+      if (!activePersons.length) {
         adminPersonsList.innerHTML = '<em>No persons found</em>';
         return;
       }
-      adminPersonsList.innerHTML = persons.map(p => `
+      adminPersonsList.innerHTML = activePersons.map(p => `
         <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span class="card-id">${escapeHtml(p.pfif_id)}</span>
