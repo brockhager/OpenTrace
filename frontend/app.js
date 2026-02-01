@@ -127,6 +127,36 @@ function getAuthHeaders() {
   return { 'Authorization': 'Bearer ' + token };
 }
 
+// ID generation utilities
+function generatePersonId(givenName, familyName, source = 'manual') {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  const name = (familyName || givenName || 'unknown').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return `opentrace.org/person.${source}.PER-${name}-${timestamp}-${random}`;
+}
+
+function generateLocationId(displayName) {
+  const slug = displayName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, '')
+    .trim()
+    .replace(/\s+/g, '-')
+    .substring(0, 50);
+  return `LOC-${slug}`;
+}
+
+function generateEventId() {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 10).toUpperCase();
+  return `EV-${timestamp}-${random}`;
+}
+
+function generateSourceId() {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+  return `SRC-${timestamp}-${random}`;
+}
+
 async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
   if (!res.ok) {
@@ -548,8 +578,7 @@ if (eventCreateForm) {
     e.preventDefault();
     eventStatus.textContent = 'Creating event...';
     try {
-      const payload = {
-        name: document.getElementById('eventName').value.trim() || null,
+      const payload = {        event_id: generateEventId(),        name: document.getElementById('eventName').value.trim() || null,
         event_type: document.getElementById('eventType').value.trim(),
         event_timestamp: new Date(document.getElementById('eventTimestamp').value).toISOString(),
         person_id: document.getElementById('eventPersonId').value.trim() || null,
@@ -603,6 +632,7 @@ if (sourceCreateForm) {
         .map(s => s.trim())
         .filter(Boolean);
       const payload = {
+        source_id: generateSourceId(),
         source_name: document.getElementById('sourceName').value.trim(),
         source_code: document.getElementById('sourceCode').value.trim(),
         source_type: document.getElementById('sourceType').value.trim(),
@@ -703,15 +733,19 @@ if (personCreateForm) {
     e.preventDefault();
     personStatusMsg.textContent = 'Creating person...';
     try {
+      const givenName = document.getElementById('personGiven').value.trim() || null;
+      const familyName = document.getElementById('personFamily').value.trim() || null;
+      const primarySource = document.getElementById('personSource').value.trim() || 'manual';
+      
       const payload = {
-        pfif_id: document.getElementById('personPfif').value.trim(),
-        given_name: document.getElementById('personGiven').value.trim() || null,
-        family_name: document.getElementById('personFamily').value.trim() || null,
+        pfif_id: generatePersonId(givenName, familyName, primarySource),
+        given_name: givenName,
+        family_name: familyName,
         age_at_disappearance: parseInt(document.getElementById('personAge').value || '', 10) || null,
         sex: document.getElementById('personSex').value.trim() || null,
         status: document.getElementById('personStatus').value.trim() || 'missing',
         date_last_seen: document.getElementById('personLastSeen').value || null,
-        primary_source: document.getElementById('personSource').value.trim() || null,
+        primary_source: primarySource,
         source_url: document.getElementById('personSourceUrl').value.trim() || null
       };
       await fetchJson('/api/persons', {
@@ -783,9 +817,11 @@ if (locationCreateForm) {
     e.preventDefault();
     locationStatusMsg.textContent = 'Creating location...';
     try {
+      const displayName = document.getElementById('locationDisplay').value.trim();
+      
       const payload = {
-        location_id: document.getElementById('locationId').value.trim(),
-        display_name: document.getElementById('locationDisplay').value.trim(),
+        location_id: generateLocationId(displayName),
+        display_name: displayName,
         canonical_name: document.getElementById('locationCanonical').value.trim(),
         latitude: parseFloat(document.getElementById('locationLat').value),
         longitude: parseFloat(document.getElementById('locationLng').value),

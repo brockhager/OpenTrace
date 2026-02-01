@@ -35,17 +35,20 @@
       <section class="admin-section">
         <h3>NamUs Scraper</h3>
         <form id="namusScrapeForm" class="form-grid">
-          <label>Case ID
+          <label>Case ID <span class="tooltip-icon" title="Enter NamUs missing persons case ID">ⓘ</span>
+            <span class="tooltip-text">Enter a NamUs case ID like "MP12345" or just "12345". The scraper will fetch data from NamUs public database.</span>
             <input id="namusCaseId" type="text" placeholder="MP12345" required />
           </label>
           <button type="submit">Scrape Case</button>
         </form>
 
         <form id="namusScanForm" class="form-grid">
-          <label>Start Case ID
+          <label>Start Case ID <span class="tooltip-icon" title="Starting case number to scan from">ⓘ</span>
+            <span class="tooltip-text">Starting case ID (e.g., "MP12345"). Scanner will check sequential cases until it finds one.</span>
             <input id="namusStartId" type="text" placeholder="MP12345" required />
           </label>
-          <label>Max Checks (1-20)
+          <label>Max Checks (1-20) <span class="tooltip-icon" title="Maximum number of cases to check">ⓘ</span>
+            <span class="tooltip-text">How many sequential case IDs to check before stopping (limit 1-20 to prevent timeouts).</span>
             <input id="namusMaxChecks" type="number" min="1" max="20" value="5" required />
           </label>
           <button type="submit">Scan Until Found</button>
@@ -56,22 +59,28 @@
       <section class="admin-section">
         <h3>Person Locations (Add)</h3>
         <form id="personLocationForm" class="form-grid">
-          <label>Person PFIF ID
+          <label>Person PFIF ID <span class="tooltip-icon" title="Unique identifier for the person">ⓘ</span>
+            <span class="tooltip-text">PFIF-compliant person ID, e.g., "opentrace.org/person.namus.MP12345"</span>
             <input id="personLocationPfif" type="text" placeholder="opentrace.org/person/..." required />
           </label>
-          <label>Location Text
+          <label>Location Text <span class="tooltip-icon" title="Where the person was seen">ⓘ</span>
+            <span class="tooltip-text">Human-readable location like "Venice Beach, Los Angeles" or "123 Main St, Springfield"</span>
             <input id="personLocationText" type="text" placeholder="Venice Beach, Los Angeles" required />
           </label>
-          <label>Event Type
+          <label>Event Type <span class="tooltip-icon" title="Type of event or sighting">ⓘ</span>
+            <span class="tooltip-text">e.g., "sighting", "last_seen", "movement", "contact"</span>
             <input id="personLocationType" type="text" placeholder="sighting" />
           </label>
-          <label>Event Date
+          <label>Event Date <span class="tooltip-icon" title="When this event occurred">ⓘ</span>
+            <span class="tooltip-text">Date and time when the person was seen or event occurred</span>
             <input id="personLocationDate" type="datetime-local" />
           </label>
-          <label>Event Description
+          <label>Event Description <span class="tooltip-icon" title="Additional details about the event">ⓘ</span>
+            <span class="tooltip-text">Optional description like "Seen near the pier wearing blue jacket"</span>
             <input id="personLocationDesc" type="text" placeholder="Seen near the pier" />
           </label>
-          <label>Source URL
+          <label>Source URL <span class="tooltip-icon" title="Reference link for this information">ⓘ</span>
+            <span class="tooltip-text">URL to the source report or article, e.g., news article or police report</span>
             <input id="personLocationSource" type="url" placeholder="https://example.com/report" />
           </label>
           <button type="submit">Add Location</button>
@@ -82,50 +91,61 @@
       <section class="admin-section">
         <h3>Persons (Create / Update / Delete)</h3>
         <form id="personCreateForm" class="form-grid">
-          <label>PFIF ID
-            <input id="personPfif" type="text" placeholder="opentrace.org/person/..." required />
-          </label>
-          <label>Given Name
+          <p class="form-note">✨ Person ID will auto-generate when you submit</p>
+          <label>Given Name <span class="tooltip-icon" title="First name">ⓘ</span>
+            <span class="tooltip-text">Person's first name or given name</span>
             <input id="personGiven" type="text" />
           </label>
-          <label>Family Name
+          <label>Family Name <span class="tooltip-icon" title="Last name">ⓘ</span>
+            <span class="tooltip-text">Person's last name or surname</span>
             <input id="personFamily" type="text" />
           </label>
-          <label>Age at Disappearance
+          <label>Age at Disappearance <span class="tooltip-icon" title="How old when they went missing">ⓘ</span>
+            <span class="tooltip-text">Age in years when the person was last seen or went missing</span>
             <input id="personAge" type="number" min="0" />
           </label>
-          <label>Sex
+          <label>Sex <span class="tooltip-icon" title="Biological sex">ⓘ</span>
+            <span class="tooltip-text">Enter "Male", "Female", or "Unknown"</span>
             <input id="personSex" type="text" placeholder="Male, Female, Unknown" />
           </label>
-          <label>Status
+          <label>Status <span class="tooltip-icon" title="Current case status">ⓘ</span>
+            <span class="tooltip-text">Status: "missing", "found", "deceased", or "closed"</span>
             <input id="personStatus" type="text" placeholder="missing" />
           </label>
-          <label>Date Last Seen
+          <label>Date Last Seen <span class="tooltip-icon" title="Last known date person was seen">ⓘ</span>
+            <span class="tooltip-text">The date when the person was last seen</span>
             <input id="personLastSeen" type="date" />
           </label>
-          <label>Primary Source
+          <label>Primary Source <span class="tooltip-icon" title="Where this data came from">ⓘ</span>
+            <span class="tooltip-text">Data source name: "namus", "interpol", "charley_project", etc.</span>
             <input id="personSource" type="text" placeholder="namus" />
           </label>
-          <label>Source URL
+          <label>Source URL <span class="tooltip-icon" title="Link to original case">ⓘ</span>
+            <span class="tooltip-text">Direct URL to the case on the source website</span>
             <input id="personSourceUrl" type="url" />
           </label>
           <button type="submit">Create Person</button>
         </form>
 
         <form id="personUpdateForm" class="form-grid">
-          <label>PFIF ID
+          <label>PFIF ID <span class="tooltip-icon" title="ID of person to update">ⓘ</span>
+            <span class="tooltip-text">Enter the PFIF ID of the person you want to update</span>
             <input id="personUpdatePfif" type="text" required />
           </label>
-          <label>Given Name
+          <label>Given Name <span class="tooltip-icon" title="Update first name">ⓘ</span>
+            <span class="tooltip-text">Leave blank to keep current value</span>
             <input id="personUpdateGiven" type="text" />
           </label>
-          <label>Family Name
+          <label>Family Name <span class="tooltip-icon" title="Update last name">ⓘ</span>
+            <span class="tooltip-text">Leave blank to keep current value</span>
             <input id="personUpdateFamily" type="text" />
           </label>
-          <label>Status
+          <label>Status <span class="tooltip-icon" title="Update case status">ⓘ</span>
+            <span class="tooltip-text">Change status to "found", "deceased", etc. Leave blank to keep current.</span>
             <input id="personUpdateStatus" type="text" />
           </label>
-          <label>Confirmed
+          <label>Confirmed <span class="tooltip-icon" title="Mark as verified">ⓘ</span>
+            <span class="tooltip-text">Mark as confirmed (verified by authority) or unconfirmed</span>
             <select id="personUpdateConfirmed">
               <option value="">No change</option>
               <option value="true">Confirmed</option>
@@ -136,7 +156,8 @@
         </form>
 
         <form id="personDeleteForm" class="form-grid">
-          <label>PFIF ID
+          <label>PFIF ID <span class="tooltip-icon" title="ID of person to delete">ⓘ</span>
+            <span class="tooltip-text">Enter PFIF ID of person to permanently delete from database</span>
             <input id="personDeletePfif" type="text" required />
           </label>
           <button type="submit" class="danger">Delete Person</button>
@@ -147,56 +168,69 @@
       <section class="admin-section">
         <h3>Locations (Create / Update / Delete)</h3>
         <form id="locationCreateForm" class="form-grid">
-          <label>Location ID
-            <input id="locationId" type="text" placeholder="los-angeles-ca-usa" required />
-          </label>
-          <label>Display Name
+          <p class="form-note">✨ Location ID will auto-generate from display name</p>
+          <label>Display Name <span class="tooltip-icon" title="Human-readable name">ⓘ</span>
+            <span class="tooltip-text">What users see, e.g., "Los Angeles, CA"</span>
             <input id="locationDisplay" type="text" required />
           </label>
-          <label>Canonical Name
+          <label>Canonical Name <span class="tooltip-icon" title="Official full name">ⓘ</span>
+            <span class="tooltip-text">Official name with hierarchy, e.g., "Los Angeles, California, United States"</span>
             <input id="locationCanonical" type="text" required />
           </label>
-          <label>Latitude
+          <label>Latitude <span class="tooltip-icon" title="Decimal degrees north/south">ⓘ</span>
+            <span class="tooltip-text">WGS84 latitude in decimal degrees (e.g., 34.052235). North is positive, south is negative.</span>
             <input id="locationLat" type="number" step="0.000001" required />
           </label>
-          <label>Longitude
+          <label>Longitude <span class="tooltip-icon" title="Decimal degrees east/west">ⓘ</span>
+            <span class="tooltip-text">WGS84 longitude in decimal degrees (e.g., -118.243683). East is positive, west is negative.</span>
             <input id="locationLng" type="number" step="0.000001" required />
           </label>
-          <label>Country Code
+          <label>Country Code <span class="tooltip-icon" title="ISO 2-letter code">ⓘ</span>
+            <span class="tooltip-text">ISO 3166-1 alpha-2 code: "US", "CA", "MX", "GB", etc.</span>
             <input id="locationCountryCode" type="text" placeholder="US" required />
           </label>
-          <label>Country Name
+          <label>Country Name <span class="tooltip-icon" title="Full country name">ⓘ</span>
+            <span class="tooltip-text">Full country name like "United States" or "Canada"</span>
             <input id="locationCountryName" type="text" placeholder="United States" required />
           </label>
-          <label>Admin1 Name
+          <label>Admin1 Name <span class="tooltip-icon" title="State/province/region">ⓘ</span>
+            <span class="tooltip-text">State, province, or first administrative division (e.g., "California", "Ontario")</span>
             <input id="locationAdmin1" type="text" placeholder="California" />
           </label>
-          <label>Locality
+          <label>Locality <span class="tooltip-icon" title="City or town name">ⓘ</span>
+            <span class="tooltip-text">City, town, or municipality name (e.g., "Los Angeles")</span>
             <input id="locationLocality" type="text" placeholder="Los Angeles" />
           </label>
-          <label>Location Type
+          <label>Location Type <span class="tooltip-icon" title="Geographic feature type">ⓘ</span>
+            <span class="tooltip-text">Type: "city", "town", "village", "landmark", "region", etc.</span>
             <input id="locationType" type="text" placeholder="city" required />
           </label>
           <button type="submit">Create Location</button>
         </form>
 
         <form id="locationUpdateForm" class="form-grid">
-          <label>Location ID
+          <label>Location ID <span class="tooltip-icon" title="ID of location to update">ⓘ</span>
+            <span class="tooltip-text">Enter the location_id you want to update</span>
             <input id="locationUpdateId" type="text" required />
           </label>
-          <label>Display Name
+          <label>Display Name <span class="tooltip-icon" title="Update display name">ⓘ</span>
+            <span class="tooltip-text">Leave blank to keep current value</span>
             <input id="locationUpdateDisplay" type="text" />
           </label>
-          <label>Canonical Name
+          <label>Canonical Name <span class="tooltip-icon" title="Update canonical name">ⓘ</span>
+            <span class="tooltip-text">Leave blank to keep current value</span>
             <input id="locationUpdateCanonical" type="text" />
           </label>
-          <label>Latitude
+          <label>Latitude <span class="tooltip-icon" title="Update latitude">ⓘ</span>
+            <span class="tooltip-text">Leave blank to keep current coordinates</span>
             <input id="locationUpdateLat" type="number" step="0.000001" />
           </label>
-          <label>Longitude
+          <label>Longitude <span class="tooltip-icon" title="Update longitude">ⓘ</span>
+            <span class="tooltip-text">Leave blank to keep current coordinates</span>
             <input id="locationUpdateLng" type="number" step="0.000001" />
           </label>
-          <label>Active
+          <label>Active <span class="tooltip-icon" title="Enable/disable location">ⓘ</span>
+            <span class="tooltip-text">Inactive locations are hidden from public searches</span>
             <select id="locationUpdateActive">
               <option value="">No change</option>
               <option value="true">Active</option>
@@ -207,7 +241,8 @@
         </form>
 
         <form id="locationDeleteForm" class="form-grid">
-          <label>Location ID
+          <label>Location ID <span class="tooltip-icon" title="ID of location to delete">ⓘ</span>
+            <span class="tooltip-text">Soft delete (marks as inactive but preserves data)</span>
             <input id="locationDeleteId" type="text" required />
           </label>
           <button type="submit" class="danger">Delete Location</button>
@@ -218,32 +253,40 @@
       <section class="admin-section">
         <h3>Events (Create / Delete)</h3>
         <form id="eventCreateForm" class="form-grid">
-          <label>Name
+          <label>Name <span class="tooltip-icon" title="Short event name">ⓘ</span>
+            <span class="tooltip-text">Optional short name like "Departure" or "Sighting at Mall"</span>
             <input id="eventName" type="text" placeholder="Departure" />
           </label>
-          <label>Event Type
+          <label>Event Type <span class="tooltip-icon" title="Type of event">ⓘ</span>
+            <span class="tooltip-text">Type: "movement", "sighting", "contact", "departure", "arrival", etc.</span>
             <input id="eventType" type="text" placeholder="movement" required />
           </label>
-          <label>Event Timestamp
+          <label>Event Timestamp <span class="tooltip-icon" title="When it occurred">ⓘ</span>
+            <span class="tooltip-text">Date and time when this event occurred</span>
             <input id="eventTimestamp" type="datetime-local" required />
           </label>
-          <label>Person ID
+          <label>Person ID <span class="tooltip-icon" title="Link to person">ⓘ</span>
+            <span class="tooltip-text">PFIF ID of the person this event relates to (optional)</span>
             <input id="eventPersonId" type="text" placeholder="opentrace.org/person/..." />
           </label>
-          <label>Location ID
+          <label>Location ID <span class="tooltip-icon" title="Where it happened">ⓘ</span>
+            <span class="tooltip-text">Location ID where event occurred (e.g., "los-angeles-ca-usa")</span>
             <input id="eventLocationId" type="text" placeholder="los-angeles-ca-usa" />
           </label>
-          <label>Source URL
+          <label>Source URL <span class="tooltip-icon" title="Evidence or reference">ⓘ</span>
+            <span class="tooltip-text">Link to source material like news article or police report</span>
             <input id="eventSourceUrl" type="url" placeholder="https://example.com" />
           </label>
-          <label>Confidence
+          <label>Confidence <span class="tooltip-icon" title="How reliable is this?">ⓘ</span>
+            <span class="tooltip-text">Confidence level: High (verified), Medium (probable), Low (unverified)</span>
             <select id="eventConfidence">
               <option value="high">High</option>
               <option value="medium" selected>Medium</option>
               <option value="low">Low</option>
             </select>
           </label>
-          <label>Visibility
+          <label>Visibility <span class="tooltip-icon" title="Who can see this?">ⓘ</span>
+            <span class="tooltip-text">Public: visible to all; Restricted: verified users; Private: admin only</span>
             <select id="eventVisibility">
               <option value="public" selected>Public</option>
               <option value="restricted">Restricted</option>
@@ -254,7 +297,8 @@
         </form>
 
         <form id="eventDeleteForm" class="form-grid">
-          <label>Event ID
+          <label>Event ID <span class="tooltip-icon" title="UUID of event to delete">ⓘ</span>
+            <span class="tooltip-text">Enter the UUID of the event to delete (soft delete, marks as private)</span>
             <input id="eventDeleteId" type="text" placeholder="550e8400-e29b-41d4-a716-446655440000" required />
           </label>
           <button type="submit" class="danger">Delete Event</button>
@@ -265,38 +309,48 @@
       <section class="admin-section">
         <h3>Sources (Create / Delete)</h3>
         <form id="sourceCreateForm" class="form-grid">
-          <label>Name
+          <label>Name <span class="tooltip-icon" title="Source display name">ⓘ</span>
+            <span class="tooltip-text">Human-readable source name like "NamUs" or "FBI Most Wanted"</span>
             <input id="sourceName" type="text" required />
           </label>
-          <label>Code
+          <label>Code <span class="tooltip-icon" title="Unique identifier code">ⓘ</span>
+            <span class="tooltip-text">Unique lowercase code like "namus", "interpol", "charley_project"</span>
             <input id="sourceCode" type="text" required />
           </label>
-          <label>Type
+          <label>Type <span class="tooltip-icon" title="Source type">ⓘ</span>
+            <span class="tooltip-text">Type: "api", "scraper", "manual", "import", "partner"</span>
             <input id="sourceType" type="text" placeholder="api" required />
           </label>
-          <label>Category
+          <label>Category <span class="tooltip-icon" title="Source category">ⓘ</span>
+            <span class="tooltip-text">Category: "official", "ngo", "media", "community", "law_enforcement"</span>
             <input id="sourceCategory" type="text" placeholder="official" required />
           </label>
-          <label>Source URL
+          <label>Source URL <span class="tooltip-icon" title="Homepage or API URL">ⓘ</span>
+            <span class="tooltip-text">Main URL for this source (homepage or API endpoint)</span>
             <input id="sourceUrl" type="url" placeholder="https://example.com" />
           </label>
-          <label>Trust Tier
+          <label>Trust Tier <span class="tooltip-icon" title="Trust level">ⓘ</span>
+            <span class="tooltip-text">Trust tier: "verified", "trusted", "monitored", "unverified"</span>
             <input id="sourceTrust" type="text" placeholder="verified" />
           </label>
-          <label>Verification
+          <label>Verification <span class="tooltip-icon" title="Verification status">ⓘ</span>
+            <span class="tooltip-text">Verification: "verified", "pending", "unverified"</span>
             <input id="sourceVerification" type="text" placeholder="verified" />
           </label>
-          <label>Reliability (0-1)
+          <label>Reliability (0-1) <span class="tooltip-icon" title="Reliability score">ⓘ</span>
+            <span class="tooltip-text">Reliability score from 0 (unreliable) to 1 (highly reliable). Default: 0.7</span>
             <input id="sourceReliability" type="number" step="0.01" min="0" max="1" value="0.7" />
           </label>
-          <label>Data Types (comma)
+          <label>Data Types (comma) <span class="tooltip-icon" title="What data it provides">ⓘ</span>
+            <span class="tooltip-text">Comma-separated list: "person", "location", "event", "media"</span>
             <input id="sourceDataTypes" type="text" placeholder="person, location" />
           </label>
           <button type="submit">Create Source</button>
         </form>
 
         <form id="sourceDeleteForm" class="form-grid">
-          <label>Source ID
+          <label>Source ID <span class="tooltip-icon" title="UUID of source to delete">ⓘ</span>
+            <span class="tooltip-text">Enter the UUID of the source to delete</span>
             <input id="sourceDeleteId" type="text" placeholder="UUID" required />
           </label>
           <button type="submit" class="danger">Delete Source</button>
