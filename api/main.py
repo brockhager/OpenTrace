@@ -6,6 +6,7 @@ from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, text
 from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
+from models.person import Person
 import os
 from contextlib import asynccontextmanager
 
@@ -121,19 +122,24 @@ def require_admin(user: dict = Depends(get_current_user)):
 @app.get("/search")
 async def search_profiles(q: str, location: Optional[str] = None, db: AsyncSession = Depends(get_db_session)):
     """Search person profiles (public or reviewed intel only)."""
-    query = select(PersonProfile).where(PersonProfile.is_confirmed == True)
+    # Use new Person model for search
+    query = select(Person).where(Person.is_confirmed == True, Person.is_active == True)
+    
     if location:
-        query = query.where(PersonProfile.last_seen_location.ilike(f"%{location}%"))
+        query = query.where(Person.source_url.ilike(f"%{location}%"))  # Temporary until Location entity
+    
     # Simple text search on names
     if q:
         query = query.where(
-            (PersonProfile.given_name.ilike(f"%{q}%")) |
-            (PersonProfile.family_name.ilike(f"%{q}%")) |
-            (PersonProfile.alternate_names.any(q))
+            (Person.given_name.ilike(f"%{q}%")) |
+            (Person.family_name.ilike(f"%{q}%"))
         )
+    
     result = await db.execute(query)
     profiles = result.scalars().all()
-    return {"results": [p.__dict__ for p in profiles]}
+    
+    # Return new API response shape
+    return {"results": [person.to_public_dict() for person in profiles]}
 
 @app.post("/intel/submit")
 async def submit_intel(item: IntelItemRequest, req: Request, db: AsyncSession = Depends(get_db_session)):

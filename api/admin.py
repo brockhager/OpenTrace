@@ -15,6 +15,7 @@ from auth.models import AdminUser
 from auth.deps import get_current_admin, require_admin_role
 from core.logger import logger
 from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
+from models.person import Person
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -23,6 +24,11 @@ class LoginRequest(BaseModel):
     password: str
 
 class ApproveProfileRequest(BaseModel):
+    pfif_id: str
+    confirm: bool = True
+    justification: Optional[str] = None
+
+class ApprovePersonRequest(BaseModel):
     pfif_id: str
     confirm: bool = True
     justification: Optional[str] = None
@@ -71,6 +77,29 @@ async def get_review_queue(db: AsyncSession = Depends(get_db_session)):
     result = await db.execute(query)
     queue = result.scalars().all()
     return {"queue": [i.__dict__ for i in queue]}
+
+@router.get("/review-persons", dependencies=[Depends(require_admin_role("admin"))])
+async def get_review_persons(db: AsyncSession = Depends(get_db_session)):
+    """List unconfirmed persons from new Person table."""
+    query = select(Person).where(Person.is_confirmed == False, Person.is_active == True)
+    result = await db.execute(query)
+    persons = result.scalars().all()
+    return {"profiles": [person.to_admin_dict() for person in persons]}
+
+@router.post("/approve-person", dependencies=[Depends(require_admin_role("admin"))])
+async def approve_person(request: ApprovePersonRequest, user: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
+    """Approve or reject a person from new Person table."""
+    stmt = update(Person).where(Person.pfif_id == request.pfif_id).values(is_confirmed=request.confirm)
+    result = await db.execute(stmt)
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Person not found")
+    
+    # Audit log
+    audit = AuditLog(action="approve_person", actor_id=str(user.id), target_id=request.pfif_id, details={"confirmed": request.confirm, "justification": request.justification})
+    db.add(audit)
+    
+    await db.commit()
+    return {"message": f"Person {request.pfif_id} {'confirmed' if request.confirm else 'rejected'}"}
 
 @router.get("/review-profiles", dependencies=[Depends(require_admin_role("admin"))])
 async def get_review_profiles(db: AsyncSession = Depends(get_db_session)):

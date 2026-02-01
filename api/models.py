@@ -19,6 +19,8 @@ from sqlalchemy.dialects.postgresql import UUID, ARRAY
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase, relationship
 
+from models.person import Person
+
 
 class Base(AsyncAttrs, DeclarativeBase):
     pass

@@ -70,9 +70,18 @@ async function loadUnconfirmed(){
   if (!profilesEl) return;
   profilesEl.innerHTML = 'Loading...';
   try {
-    const res = await fetch('/admin/review-profiles', { 
+    // Try new Person endpoint first, fallback to old profile endpoint
+    let res = await fetch('/admin/review-persons', { 
       headers: { 'Authorization': 'Bearer ' + token }
     });
+    
+    if (!res.ok) {
+      // Fallback to old endpoint for backward compatibility
+      res = await fetch('/admin/review-profiles', { 
+        headers: { 'Authorization': 'Bearer ' + token }
+      });
+    }
+    
     if (!res.ok) throw new Error('Failed to load');
     const data = await res.json();
     const profiles = data.profiles || [];
@@ -87,10 +96,14 @@ async function loadUnconfirmed(){
 }
 
 function renderRow(p){
+  // Handle both new Person and old PersonProfile formats
+  const location = p.last_seen_location || p.source_url || 'Unknown location';
+  const author = p.author_name || p.primary_source || 'Unknown source';
+  
   return `
     <div class="card">
       <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
-      <p>${escapeHtml(p.last_seen_location || '')} — ${escapeHtml(p.author_name || '')}</p>
+      <p>${escapeHtml(location)} — ${escapeHtml(author)}</p>
       <p><button data-pfif="${encodeURIComponent(p.pfif_id)}" class="approve">Approve</button></p>
     </div>
   `;
@@ -102,7 +115,8 @@ if (profilesEl) {
     const pfif = decodeURIComponent(e.target.dataset.pfif);
     e.target.disabled = true;
     try {
-      const res = await fetch('/admin/approve-profile', {
+      // Try new Person endpoint first, fallback to old profile endpoint
+      let res = await fetch('/admin/approve-person', {
         method: 'POST', 
         headers: { 
           'Authorization': 'Bearer ' + token, 
@@ -110,6 +124,19 @@ if (profilesEl) {
         },
         body: JSON.stringify({ pfif_id: pfif, confirm: true })
       });
+      
+      if (!res.ok) {
+        // Fallback to old endpoint for backward compatibility
+        res = await fetch('/admin/approve-profile', {
+          method: 'POST', 
+          headers: { 
+            'Authorization': 'Bearer ' + token, 
+            'Content-Type': 'application/json' 
+          },
+          body: JSON.stringify({ pfif_id: pfif, confirm: true })
+        });
+      }
+      
       if (!res.ok) throw new Error('Approve failed');
       await loadUnconfirmed();
     } catch (err) {
@@ -124,10 +151,9 @@ function renderCard(p) {
   const pfif = encodeURIComponent(p.pfif_id);
   return `
     <article class="card">
-      <h3>${escapeHtml(name)} <span class="meta">(${p.age || '—'}, ${p.sex || '—'})</span></h3>
-      <p><strong>Last seen:</strong> ${escapeHtml(p.last_seen_location || 'Unknown')}</p>
+      <h3>${escapeHtml(name)} <span class="meta">(${p.age_at_disappearance || '—'}, ${p.sex || '—'})</span></h3>
       <p><strong>Status:</strong> ${escapeHtml(p.status)}</p>
-      <p class="meta">Source: ${escapeHtml(p.source || 'Unknown')}</p>
+      <p class="meta">Source: ${escapeHtml(p.primary_source || 'Unknown')}</p>
       <p><a href="/profile.html?id=${pfif}">View details</a></p>
     </article>
   `;
