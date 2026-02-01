@@ -12,6 +12,21 @@ const clearLocationBtn = document.getElementById('clearLocation');
 
 let userLocation = null;
 
+// Suggestion links
+const suggestionLinks = document.querySelectorAll('.suggestion-link');
+suggestionLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const query = link.getAttribute('data-query');
+    if (queryInput) {
+      queryInput.value = query;
+      if (form) {
+        form.dispatchEvent(new Event('submit'));
+      }
+    }
+  });
+});
+
 if (form) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();

@@ -17,8 +17,8 @@
       <a href="/admin.html">Admin</a>
     </nav>
     
-    <form id="searchForm" class="search-form" action="/search" method="get">
-      <input id="query" name="q" type="search" placeholder="Try: Michael Johnson or California" autocomplete="off" autofocus />
+    <form id="searchForm" class="search-form">
+      <input id="query" type="search" placeholder="Try: Michael Johnson or California" autocomplete="off" autofocus />
       <button type="submit">Search</button>
     </form>
     
@@ -38,6 +38,20 @@
 
     <div id="status" class="status" aria-live="polite">No results yet — Try: "Michael Johnson" or "California"</div>
     <div id="results" class="results"></div>
+    
+    <div class="suggested-searches">
+      <p><strong>Not sure what to search?</strong> Try these:</p>
+      <div class="suggestion-links">
+        <button type="button" class="suggestion-link" data-query="Michael Johnson">Michael Johnson</button>
+        <button type="button" class="suggestion-link" data-query="California">California</button>
+        <button type="button" class="suggestion-link" data-query="Los Angeles">Los Angeles</button>
+        <button type="button" class="suggestion-link" data-query="Smith">Smith</button>
+        <button type="button" class="suggestion-link" data-query="Texas">Texas</button>
+        <button type="button" class="suggestion-link" data-query="New York">New York</button>
+        <button type="button" class="suggestion-link" data-query="Florida">Florida</button>
+        <button type="button" class="suggestion-link" data-query="missing">Status: Missing</button>
+      </div>
+    </div>
   </main>
 
   <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
