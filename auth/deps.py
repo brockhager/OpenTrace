@@ -1,4 +1,5 @@
 # auth/deps.py
+from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -8,7 +9,7 @@ from db.session import get_db_session
 from auth.models import AdminUser
 from auth.security import decode_token
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/admin/login", auto_error=False)
 
 async def get_current_admin(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db_session)):
     credentials_exception = HTTPException(
@@ -28,6 +29,23 @@ async def get_current_admin(token: str = Depends(oauth2_scheme), db: AsyncSessio
     if user is None:
         raise credentials_exception
     return user
+
+async def optional_admin(token: Optional[str] = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db_session)) -> Optional[AdminUser]:
+    """Return admin user if valid token provided, None otherwise (no error)."""
+    if not token or db is None:
+        return None
+    try:
+        payload = decode_token(token)
+        if payload is None:
+            return None
+        email: str = payload.get("sub")
+        if email is None:
+            return None
+        result = await db.execute(select(AdminUser).where(AdminUser.email == email, AdminUser.is_active == True))
+        user = result.scalar_one_or_none()
+        return user
+    except Exception:
+        return None
 
 def require_admin_role(required_role: str = "admin"):
     async def role_checker(user: AdminUser = Depends(get_current_admin)):

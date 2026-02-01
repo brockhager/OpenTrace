@@ -766,50 +766,70 @@ async function loadPersonDetail() {
   }
   personStatusEl.textContent = 'Loading...';
   try {
-    const locationsPayload = await fetchJson(`/api/persons/${encodeURIComponent(id)}/locations`);
-    const timelinePayload = await fetchJson(`/api/events/person/${encodeURIComponent(id)}/timeline`);
-    const person = locationsPayload.person || {};
-    const locations = locationsPayload.locations || [];
-    const timeline = timelinePayload.timeline || [];
+    // Try to fetch person details (works for both confirmed and unconfirmed if admin)
+    const headers = getAuthHeaders ? getAuthHeaders() : {};
+    const personPayload = await fetchJson(`/api/persons/${encodeURIComponent(id)}`, { headers });
+    const person = personPayload.person || {};
     
     // Show ID in top right
     if (personIdEl) {
       personIdEl.textContent = escapeHtml(person.pfif_id || id);
     }
 
+    // Try to fetch locations and events (these might fail if person has none)
+    let locations = [];
+    let timeline = [];
+    try {
+      const locPayload = await fetchJson(`/api/locations?person_id=${encodeURIComponent(id)}`, { headers });
+      locations = locPayload.locations || [];
+    } catch (e) {
+      console.log('No locations found');
+    }
+    
+    try {
+      const evtPayload = await fetchJson(`/api/events?person_id=${encodeURIComponent(id)}`, { headers });
+      timeline = evtPayload.events || [];
+    } catch (e) {
+      console.log('No events found');
+    }
+
+    const confirmedBadge = person.is_confirmed ? '' : '<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; margin-left: 1rem;">Unconfirmed</span>';
+
     personDetailEl.innerHTML = `
       <div class="card">
         <span class="card-id">${escapeHtml(person.pfif_id || id)}</span>
-        <h2>${escapeHtml(person.given_name || '')} ${escapeHtml(person.family_name || '')}</h2>
+        <h2>${escapeHtml(person.given_name || '')} ${escapeHtml(person.family_name || '')}${confirmedBadge}</h2>
       </div>
       <p><strong>Status:</strong> ${escapeHtml(person.status || '—')}</p>
       <p><strong>Age at disappearance:</strong> ${person.age_at_disappearance ?? '—'}</p>
+      <p><strong>Sex:</strong> ${escapeHtml(person.sex || '—')}</p>
       <p><strong>Last seen:</strong> ${escapeHtml(person.date_last_seen || '—')}</p>
-      <p class="meta">Source: ${escapeHtml(person.primary_source || 'Unknown')}</p>
+      <p><strong>Source:</strong> ${person.source_url ? `<a href="${escapeHtml(person.source_url)}" target="_blank">${escapeHtml(person.primary_source || 'View Source')}</a>` : escapeHtml(person.primary_source || 'Unknown')}</p>
+      ${person.alternate_names && person.alternate_names.length ? `<p><strong>Alternate names:</strong> ${person.alternate_names.map(escapeHtml).join(', ')}</p>` : ''}
       <section class="detail-section">
         <h3>Locations</h3>
         ${locations.length ? locations.map(loc => `
           <div class="card">
             <p><strong>${escapeHtml(loc.display_name)}</strong></p>
-            <p class="meta">${escapeHtml(loc.event_type)} · ${escapeHtml(loc.event_date || '—')}</p>
-            <p>${escapeHtml(loc.event_description || '')}</p>
+            <p class="meta">${escapeHtml(loc.canonical_name || '')}</p>
           </div>
-        `).join('') : '<p class="meta">No location events.</p>'}
+        `).join('') : '<p class="meta">No locations recorded.</p>'}
       </section>
       <section class="detail-section">
         <h3>Timeline</h3>
         ${timeline.length ? timeline.map(evt => `
           <div class="card">
             <p><strong>${escapeHtml(evt.name || evt.event_type)}</strong></p>
-            <p class="meta">${escapeHtml(evt.event_type)} · ${escapeHtml(evt.event_timestamp || '—')}</p>
-            <p>${evt.location_id ? `Location: ${escapeHtml(evt.location_id)}` : ''}</p>
+            <p class="meta">${escapeHtml(evt.event_timestamp || '—')}</p>
+            <p>${escapeHtml(evt.description || '')}</p>
           </div>
         `).join('') : '<p class="meta">No timeline events.</p>'}
       </section>
     `;
     personStatusEl.textContent = '';
   } catch (err) {
-    personStatusEl.textContent = 'Failed to load person details.';
+    console.error('Failed to load person:', err);
+    personStatusEl.textContent = 'Failed to load person details. This person may not be confirmed yet or may have been deleted.';
   }
 }
 

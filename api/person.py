@@ -13,7 +13,7 @@ from datetime import datetime
 
 from db.session import get_db_session
 from models.person import Person
-from auth.deps import require_admin_role
+from auth.deps import require_admin_role, optional_admin
 from auth.models import AdminUser
 
 router = APIRouter(prefix="/api/persons", tags=["persons"])
@@ -79,14 +79,24 @@ async def list_persons(
 @router.get("/{pfif_id}")
 async def get_person(
     pfif_id: str,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    admin: Optional[AdminUser] = Depends(optional_admin)
 ):
-    """Get a person by PFIF ID (public)."""
+    """Get a person by PFIF ID (public for confirmed, admin for unconfirmed)."""
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
-    result = await db.execute(
-        select(Person).where(Person.pfif_id == pfif_id, Person.is_confirmed == True, Person.is_active == True)
-    )
+    
+    # If admin, show all persons (confirmed or not)
+    if admin:
+        result = await db.execute(
+            select(Person).where(Person.pfif_id == pfif_id, Person.is_active == True)
+        )
+    else:
+        # Public: only confirmed persons
+        result = await db.execute(
+            select(Person).where(Person.pfif_id == pfif_id, Person.is_confirmed == True, Person.is_active == True)
+        )
+    
     person = result.scalar_one_or_none()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
