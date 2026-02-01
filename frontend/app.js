@@ -270,42 +270,31 @@ function renderRow(p){
       <span class="card-id">${escapeHtml(id)}</span>
       <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
       <p>${escapeHtml(location)} — ${escapeHtml(author)}</p>
-      <p><button data-pfif="${encodeURIComponent(pfifId)}" class="approve">Approve</button></p>
+      <p>
+    <button data-pfif="${encodeURIComponent(pfifId)}" class="approve">Approve</button>
+    <button data-pfif="${encodeURIComponent(pfifId)}" class="danger delete-profile" style="margin-left:8px;">Delete</button>
+  </p>
     </div>
   `;
 }
 
 if (profilesEl) {
   profilesEl.addEventListener('click', async (e) => {
-    if (!e.target.classList.contains('approve')) return;
-    const pfif = decodeURIComponent(e.target.dataset.pfif);
-    
-    if (!token) {
-      alert('Not authenticated. Please log in first.');
-      return;
-    }
-    
-    e.target.disabled = true;
-    e.target.textContent = 'Approving...';
-    
-    try {
-      // Try new Person endpoint first, fallback to old profile endpoint
-      let res = await fetch('/admin/approve-person', {
-        method: 'POST', 
-        headers: { 
-          'Authorization': 'Bearer ' + token, 
-          'Content-Type': 'application/json' 
-        },
-        body: JSON.stringify({ pfif_id: pfif, confirm: true })
-      });
+    // Approve handler
+    if (e.target.classList.contains('approve')) {
+      const pfif = decodeURIComponent(e.target.dataset.pfif);
       
-      if (!res.ok && res.status !== 404) {
-        throw new Error(`Approve failed: ${res.status}`);
+      if (!token) {
+        alert('Not authenticated. Please log in first.');
+        return;
       }
       
-      if (!res.ok || res.status === 404) {
-        // Fallback to old endpoint for backward compatibility
-        res = await fetch('/admin/approve-profile', {
+      e.target.disabled = true;
+      e.target.textContent = 'Approving...';
+      
+      try {
+        // Try new Person endpoint first, fallback to old profile endpoint
+        let res = await fetch('/admin/approve-person', {
           method: 'POST', 
           headers: { 
             'Authorization': 'Bearer ' + token, 
@@ -313,24 +302,81 @@ if (profilesEl) {
           },
           body: JSON.stringify({ pfif_id: pfif, confirm: true })
         });
+        
+        if (!res.ok && res.status !== 404) {
+          throw new Error(`Approve failed: ${res.status}`);
+        }
+        
+        if (!res.ok || res.status === 404) {
+          // Fallback to old endpoint for backward compatibility
+          res = await fetch('/admin/approve-profile', {
+            method: 'POST', 
+            headers: { 
+              'Authorization': 'Bearer ' + token, 
+              'Content-Type': 'application/json' 
+            },
+            body: JSON.stringify({ pfif_id: pfif, confirm: true })
+          });
+        }
+        
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`Approve failed: ${res.status} - ${errText}`);
+        }
+        
+        const result = await res.json();
+        console.log('Approve success:', result);
+        
+        // Reload the list
+        await loadUnconfirmed();
+      } catch (err) {
+        console.error('Approve error:', err);
+        if (loginStatus) loginStatus.textContent = `Approve failed: ${err.message}`;
+        e.target.disabled = false;
+        e.target.textContent = 'Approve';
       }
-      
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`Approve failed: ${res.status} - ${errText}`);
-      }
-      
-      const result = await res.json();
-      console.log('Approve success:', result);
-      
-      // Reload the list
-      await loadUnconfirmed();
-    } catch (err) {
-      console.error('Approve error:', err);
-      if (loginStatus) loginStatus.textContent = `Approve failed: ${err.message}`;
-      e.target.disabled = false;
-      e.target.textContent = 'Approve';
+      return;
     }
+
+    // Delete handler for profile rows
+    if (e.target.classList.contains('delete-profile')) {
+      const pfif = decodeURIComponent(e.target.dataset.pfif);
+      if (!confirm('Are you sure you want to remove this profile permanently? This will also remove related data.')) return;
+      if (!token) {
+        alert('Not authenticated. Please log in first.');
+        return;
+      }
+
+      try {
+        // Try deleting from new Person table first (soft delete)
+        let res = await fetch(`/api/persons/${encodeURIComponent(pfif)}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': 'Bearer ' + token }
+        });
+        if (res.ok) {
+          alert('Person deleted (soft)');
+          await loadUnconfirmed();
+          return;
+        }
+        // If not found on Person table, use takedown for PersonProfile
+        res = await fetch('/admin/takedown', {
+          method: 'POST',
+          headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pfif_id: pfif })
+        });
+        if (!res.ok) {
+          const errText = await res.text();
+          throw new Error(`${res.status}: ${errText}`);
+        }
+        alert('Profile removed');
+        await loadUnconfirmed();
+      } catch (err) {
+        console.error('Delete profile error:', err);
+        alert(`Delete failed: ${err.message}`);
+      }
+      return;
+    }
+
   });
 }
 
