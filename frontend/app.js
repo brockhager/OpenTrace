@@ -163,12 +163,18 @@ function generatePersonId(givenName, familyName, source = 'manual') {
   return `opentrace.org/person.${source}.PER-${name}-${timestamp}-${random}`;
 }
 
+// Sanitize IDs used throughout the frontend: replace spaces with underscores and trim
+function sanitizeId(s) {
+  if (!s && s !== '') return s;
+  return String(s).replace(/\s+/g, '_').trim();
+}
+
 function generateLocationId(displayName) {
-  const slug = displayName
+  const slug = String(displayName || '')
     .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
+    .replace(/[^a-z0-9\s_]/g, '')
     .trim()
-    .replace(/\s+/g, '-')
+    .replace(/\s+/g, '_')
     .substring(0, 50);
   return `LOC-${slug}`;
 }
@@ -340,7 +346,7 @@ if (profilesEl) {
 
     // Delete handler for profile rows
     if (e.target.classList.contains('delete-profile')) {
-      const pfif = decodeURIComponent(e.target.dataset.pfif);
+      const pfif = sanitizeId(decodeURIComponent(e.target.dataset.pfif));
       if (!confirm('Are you sure you want to remove this profile permanently? This will also remove related data.')) return;
       if (!token) {
         alert('Not authenticated. Please log in first.');
@@ -1047,7 +1053,7 @@ if (personLocationForm) {
     e.preventDefault();
     personLocationStatus.textContent = 'Adding location...';
     try {
-      const pfif = document.getElementById('personLocationPfif').value.trim();
+      const pfif = sanitizeId(document.getElementById('personLocationPfif').value.trim());
       const payload = {
         text: document.getElementById('personLocationText').value.trim(),
         event_type: document.getElementById('personLocationType').value.trim() || 'sighting',
@@ -1080,7 +1086,7 @@ if (eventCreateForm) {
       const payload = {        event_id: generateEventId(),        name: document.getElementById('eventName').value.trim() || null,
         event_type: document.getElementById('eventType').value.trim(),
         event_timestamp: new Date(document.getElementById('eventTimestamp').value).toISOString(),
-        person_id: document.getElementById('eventPersonId').value.trim() || null,
+        person_id: (document.getElementById('eventPersonId').value.trim() ? sanitizeId(document.getElementById('eventPersonId').value.trim()) : null),
         location_id: document.getElementById('eventLocationId').value.trim() || null,
         source_url: document.getElementById('eventSourceUrl').value.trim() || null,
         confidence_score: document.getElementById('eventConfidence').value,
@@ -1104,7 +1110,7 @@ if (eventDeleteForm) {
     e.preventDefault();
     eventStatus.textContent = 'Deleting event...';
     try {
-      const eventId = document.getElementById('eventDeleteId').value.trim();
+      const eventId = sanitizeId(document.getElementById('eventDeleteId').value.trim());
       await fetchJson(`/api/events/${encodeURIComponent(eventId)}`, {
         method: 'DELETE',
         headers: { ...getAuthHeaders() }
@@ -1160,7 +1166,7 @@ if (sourceDeleteForm) {
     e.preventDefault();
     sourceStatus.textContent = 'Deleting source...';
     try {
-      const sourceId = document.getElementById('sourceDeleteId').value.trim();
+      const sourceId = sanitizeId(document.getElementById('sourceDeleteId').value.trim());
       await fetchJson(`/api/sources/${encodeURIComponent(sourceId)}`, {
         method: 'DELETE',
         headers: { ...getAuthHeaders() }
@@ -1373,7 +1379,7 @@ if (personUpdateForm) {
     e.preventDefault();
     personStatusMsg.textContent = 'Updating person...';
     try {
-      const pfif = document.getElementById('personUpdatePfif').value.trim();
+      const pfif = sanitizeId(document.getElementById('personUpdatePfif').value.trim());
       const confirmed = document.getElementById('personUpdateConfirmed').value;
       const payload = {
         given_name: document.getElementById('personUpdateGiven').value.trim() || undefined,
@@ -1400,7 +1406,7 @@ if (personDeleteForm) {
     e.preventDefault();
     personStatusMsg.textContent = 'Deleting person...';
     try {
-      const pfif = document.getElementById('personDeletePfif').value.trim();
+      const pfif = sanitizeId(document.getElementById('personDeletePfif').value.trim());
       await fetchJson(`/api/persons/${encodeURIComponent(pfif)}`, {
         method: 'DELETE',
         headers: { ...getAuthHeaders() }
@@ -1456,7 +1462,7 @@ if (locationUpdateForm) {
     e.preventDefault();
     locationStatusMsg.textContent = 'Updating location...';
     try {
-      const locationId = document.getElementById('locationUpdateId').value.trim();
+      const locationId = sanitizeId(document.getElementById('locationUpdateId').value.trim());
       const activeValue = document.getElementById('locationUpdateActive').value;
       const payload = {
         display_name: document.getElementById('locationUpdateDisplay').value.trim() || undefined,
@@ -1484,7 +1490,7 @@ if (locationDeleteForm) {
     e.preventDefault();
     locationStatusMsg.textContent = 'Deleting location...';
     try {
-      const locationId = document.getElementById('locationDeleteId').value.trim();
+      const locationId = sanitizeId(document.getElementById('locationDeleteId').value.trim());
       await fetchJson(`/api/locations/${encodeURIComponent(locationId)}`, {
         method: 'DELETE',
         headers: { ...getAuthHeaders() }
