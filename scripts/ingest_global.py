@@ -7,11 +7,23 @@ Usage:
 """
 import asyncio
 import argparse
+import sys
+from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from db.session import async_session
-from scrapers.opensanctions_client import OpenSanctionsClient
-from scrapers.charley_scraper import CharleyScraper
+# Ensure the project root is on sys.path when scripts are executed directly
+# (Railway sometimes runs commands outside the repository root).
+project_root = Path(__file__).parent.parent
+sys.path.insert(0, str(project_root))
+
+try:
+    from db.session import async_session
+    from scrapers.opensanctions_client import OpenSanctionsClient
+    from scrapers.charley_scraper import CharleyScraper
+except ModuleNotFoundError as e:
+    print("Module import error:", e)
+    print("Hint: Ensure you're running this script from the repository root or that the project files are available in the build context.")
+    raise
 
 
 async def ingest_opensanctions(batch_size: int):
