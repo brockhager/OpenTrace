@@ -14,7 +14,10 @@ else:
     async_session = None
 
 async def get_db_session():
+    # In test environments or when DATABASE_URL is not set, yield None so endpoints
+    # (like /health) can still respond and make an informed decision.
     if async_session is None:
-        raise RuntimeError("DATABASE_URL is not configured. Set DATABASE_URL or RAILWAY_DATABASE_URL before using the DB.")
+        yield None
+        return
     async with async_session() as session:
         yield session
