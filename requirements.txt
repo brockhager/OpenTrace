@@ -11,6 +11,7 @@ passlib[bcrypt]==1.7.4
 
 # Data & Scraping
 httpx==0.26.0          # Async HTTP client (for OpenSanctions + respectful scraping)
+aiohttp==3.9.1         # Async HTTP client (for location resolver)
 beautifulsoup4==4.12.3  # HTML parsing for NamUs/Charley Project
 lxml==4.9.4             # Faster XML parsing (for PFIF compatibility)
 pdfminer.six==20231228  # PDF text extraction for document intelligence
