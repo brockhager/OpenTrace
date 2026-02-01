@@ -98,7 +98,7 @@ class NamUsScraper:
             data['full_name'] = name_elem.get_text(strip=True)
 
         # Age
-        age_elem = soup.find(text='Age:').find_next('td') if soup.find(text='Age:') else None
+        age_elem = soup.find(string='Age:').find_next('td') if soup.find(string='Age:') else None
         if age_elem:
             try:
                 data['age'] = int(age_elem.get_text(strip=True))
@@ -106,12 +106,12 @@ class NamUsScraper:
                 pass
 
         # Sex
-        sex_elem = soup.find(text='Sex:').find_next('td') if soup.find(text='Sex:') else None
+        sex_elem = soup.find(string='Sex:').find_next('td') if soup.find(string='Sex:') else None
         if sex_elem:
             data['sex'] = sex_elem.get_text(strip=True)
 
         # Last seen location (circumstantial)
-        location_elem = soup.find(text='Circumstances of Disappearance').find_next('p') if soup.find(text='Circumstances of Disappearance') else None
+        location_elem = soup.find(string='Circumstances of Disappearance').find_next('p') if soup.find(string='Circumstances of Disappearance') else None
         if location_elem:
             data['last_seen_location'] = location_elem.get_text(strip=True)[:200]  # Truncate
 
