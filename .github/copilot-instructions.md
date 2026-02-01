@@ -1,15 +1,201 @@
-# OpenTrace AI Agent Guide
+# OpenTrace AI Coding Agent Instructions
 
-## Architecture Overview
+## Architecture
 
-OpenTrace is a **privacy-first missing persons tracing platform** built with async Python (FastAPI, SQLAlchemy 2.0, asyncpg). The system aggregates verified public data from official sources (NamUs, Interpol, Charley Project) while maintaining strict privacy standards.
+**Privacy-first missing persons platform** built with async Python (FastAPI + SQLAlchemy 2.0 + asyncpg).
 
-### Core Data Standard: PFIF v1.4
-The system implements **PFIF (People Finder Interchange Format) v1.4** for interoperability:
-- **Person entity**: Canonical missing person profiles ([models/person.py](models/person.py))
-- **Intel items**: User-submitted intelligence with review workflow ([api/models.py](api/models.py))
-- **Stable identifiers**: `pfif_id` format: `opentrace.org/person/namus.MP24398`
-🔍 Step 2: Connect to Verified Public Data Sources
+### Core Entities (Phase 14-16)
+1. **Person** ([models/person.py](models/person.py)) - Canonical missing/found individuals with PFIF-compliant `pfif_id`
+2. **Location** ([models/location.py](models/location.py)) - Geocoded last-seen locations with PostGIS support  
+3. **Event** ([models/event.py](models/event.py)) - Timeline of disappearance/sighting events with evidence links
+4. **Source** ([models/source.py](models/source.py)) - Data provenance tracking (NamUs, Interpol, Charley Project)
+
+### Database Pattern
+- **Async-only**: All DB operations use `async with async_session() as db:` ([db/session.py](db/session.py))
+- **Graceful degradation**: If `DATABASE_URL` is None, endpoints return empty results instead of crashing
+- **URL normalization**: `core/config.py` auto-converts `postgresql://` → `postgresql+asyncpg://` for Railway compatibility
+
+### API Structure
+- **Public endpoints** ([api/public.py](api/public.py)): Anonymous search with rate limiting (10/hr per IP)
+- **Admin endpoints** ([api/admin.py](api/admin.py)): JWT-authenticated CRUD for Person/Location/Event/Source
+- **Health check** ([api/health.py](api/health.py)): Returns DB connectivity + uptime at `/health`
+
+## Critical Development Patterns
+
+### 1. Adding New Entities
+When creating models like Person/Location/Event:
+```python
+# models/entity.py - Use declarative_base from models/person.py
+from models.person import Base
+class NewEntity(Base):
+    __tablename__ = "new_entity"
+    pfif_id = Column(String, primary_key=True)  # PFIF-compliant ID
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+```
+
+**Migration workflow**:
+1. Create `migrations/00X_create_entity_table.sql` with DDL
+2. Test locally: `psql < migrations/00X_create_entity_table.sql`
+3. Railway: `railway run psql < migrations/00X_create_entity_table.sql`
+
+### 2. Scraper Implementation
+All scrapers must follow [scrapers/namus_scraper.py](scrapers/namus_scraper.py) pattern:
+- **Cache results** with SHA-256 hash to detect source changes
+- **Rate limit**: 1 request/5s minimum (configurable via `RATE_LIMIT_DELAY`)
+- **robots.txt compliance**: Check before first request
+- **User-Agent**: `"Opentrace/0.1.0 (https://github.com/brockhager/OpenTrace)"`
+
+Example from existing code:
+```python
+async def _fetch_with_cache(self, url: str, case_id: str) -> Optional[str]:
+    cache_path = self.cache_dir / f"source_{case_id}.json"
+    if cache_path.exists() and not is_stale(cache_path):
+        return cached_content
+    await asyncio.sleep(self.RATE_LIMIT_DELAY)
+    # Fetch and cache...
+```
+
+### 3. Testing Without DB
+Tests use isolated `TestClient` **without** middleware ([tests/test_public.py](tests/test_public.py)):
+```python
+@pytest.fixture
+def client():
+    test_app = FastAPI()
+    test_app.include_router(public_router)
+    return TestClient(test_app)  # No DB session dependency
+```
+
+Run: `pytest tests/ -v`
+
+### 4. Authentication Pattern
+Admin routes use dependency injection ([auth/deps.py](auth/deps.py)):
+```python
+from auth.deps import get_current_admin
+
+@router.post("/admin/edit")
+async def edit_entity(
+    data: EditRequest,
+    admin: AdminUser = Depends(get_current_admin),  # Auto-validates JWT
+    db: AsyncSession = Depends(get_db_session)
+):
+    # admin.role available here
+```
+
+## Deployment Essentials
+
+### Required Environment Variables
+```bash
+DATABASE_URL=postgresql://user:pass@host:5432/db  # Auto-converted to +asyncpg
+JWT_SECRET_KEY=<min-32-chars>  # Generate: openssl rand -hex 32
+```
+
+### Railway-Specific Issues
+1. **DNS errors** (`getaddrinfo failed`): Use public DB URL, not `*.railway.internal`
+2. **Frontend 404s**: Verify `frontend/` files in Dockerfile COPY step ([Dockerfile](Dockerfile) line 26)
+3. **Health endpoint 503**: Check `railway logs` for DB connection errors
+
+### Local Development
+```bash
+# Setup
+python -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+createdb opentrace_dev
+
+# Initialize schema
+psql opentrace_dev < databases/db_init.sql
+for f in migrations/*.sql; do psql opentrace_dev < $f; done
+
+# Run
+uvicorn api.main:app --reload
+```
+
+## Ethical Constraints (NEVER VIOLATE)
+
+1. **Data sources**: Only NamUs public pages, OpenSanctions API, Charley Project HTML
+2. **Forbidden**: Social media scraping, facial recognition, geolocation tracking, DNA matching
+3. **PII handling**: All images processed in-memory only; no persistent storage
+4. **Takedown SLA**: 24-hour response for GDPR Article 17 requests
+
+## File Size Convention
+- **Maximum 700 lines per file** - refactor at 600 lines
+- Example: [api/main.py](api/main.py) is 322 lines; split admin routes into [api/admin.py](api/admin.py)
+
+## Phase 17: Frontend UI for Core Entities
+
+### Requirements
+Build responsive HTML/JS UI in `frontend/` for **Person**, **Location**, **Event**, and **Source** entities following existing patterns:
+
+**Public User Features** (read-only):
+- Search across all entities with filters
+- View detail pages for Person/Location/Event/Source
+- Timeline view showing events chronologically
+- Map view for geocoded locations
+
+**Admin Features** (after JWT auth):
+- Full CRUD for all four entities
+- Approve/reject pending submissions
+- Bulk import from verified sources
+- Audit log viewer
+
+### API Endpoints to Expose
+```javascript
+// Public endpoints (already exist or need creation)
+GET /persons?q=name&limit=50           // Search persons
+GET /persons/{pfif_id}                 // Get person details
+GET /locations?q=city&limit=50         // Search locations  
+GET /locations/{id}                    // Get location details
+GET /events?person_id=X&limit=50       // Get events for person
+GET /events/{id}                       // Get event details
+GET /sources                           // List all data sources
+
+// Admin endpoints (require JWT token)
+POST   /admin/persons                  // Create person
+PUT    /admin/persons/{pfif_id}        // Update person
+DELETE /admin/persons/{pfif_id}        // Soft delete person
+POST   /admin/locations                // Create location
+PUT    /admin/locations/{id}           // Update location
+POST   /admin/events                   // Create event
+PUT    /admin/events/{id}              // Update event
+POST   /admin/sources                  // Register new source
+```
+
+### Development Workflow
+1. **Create entity-specific HTML pages** in `frontend/`:
+   - `persons.html` - Person search/list
+   - `person-detail.html` - Single person view
+   - `locations.html` - Location browser
+   - `events.html` - Event timeline
+   - `admin-crud.html` - Admin entity management
+
+2. **Update `frontend/app.js`** with:
+   - Fetch helpers for new endpoints
+   - JWT token management (store in sessionStorage)
+   - Form handlers for admin CRUD operations
+
+3. **Add routes in [api/main.py](api/main.py)**:
+   ```python
+   app.mount("/static", StaticFiles(directory="frontend"), name="static")
+   
+   @app.get("/")
+   async def read_root():
+       return FileResponse("frontend/index.html")
+   ```
+
+### Testing Checklist
+- [ ] Public user can search persons without auth
+- [ ] Location map renders with correct coordinates
+- [ ] Event timeline shows chronological order
+- [ ] Admin login returns valid JWT token
+- [ ] Admin can create/edit/delete all entities
+- [ ] Graceful error handling when DB unavailable
+- [ ] Mobile-responsive UI (test at 375px width)
+
+### Acceptance Criteria
+- All CRUD operations log to `audit_log` table
+- Admin actions require valid JWT (401 if missing/invalid)
+- Public endpoints rate-limited (10 req/hr per IP)
+- Frontend uses existing [frontend/styles.css](frontend/styles.css) patterns
+- No PII displayed without user consent flags
 Only ingest from these publicly accessible, legal sources:
 Source
 Access Method
