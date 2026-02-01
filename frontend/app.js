@@ -429,16 +429,20 @@ if (locationsForm) {
         return;
       }
       locationsStatus.textContent = '';
-      locationsResults.innerHTML = payload.map(loc => `
-        <article class="card">
-          <span class="card-id">${escapeHtml(loc.location_id)}</span>
-          <h3>${escapeHtml(loc.display_name)}</h3>
-          <p class="meta">${escapeHtml(loc.canonical_name)}</p>
-          <p><strong>Type:</strong> ${escapeHtml(loc.location_type)}</p>
-          <p><strong>Coords:</strong> ${loc.latitude}, ${loc.longitude}</p>
-          <p class="meta">Confidence: ${loc.confidence_score}</p>
-        </article>
-      `).join('');
+      locationsResults.innerHTML = payload.map(loc => {
+        const locId = encodeURIComponent(loc.location_id);
+        return `
+          <article class="card">
+            <span class="card-id">${escapeHtml(loc.location_id)}</span>
+            <h3>${escapeHtml(loc.display_name)}</h3>
+            <p class="meta">${escapeHtml(loc.canonical_name)}</p>
+            <p><strong>Type:</strong> ${escapeHtml(loc.location_type)}</p>
+            <p><strong>Coords:</strong> ${loc.latitude}, ${loc.longitude}</p>
+            <p class="meta">Confidence: ${loc.confidence_score}</p>
+            <p><a href="/location-detail.html?id=${locId}">View details</a></p>
+          </article>
+        `;
+      }).join('');
     } catch (err) {
       locationsStatus.textContent = 'Search failed — try again.';
     }
@@ -463,16 +467,20 @@ async function loadEvents(params = {}) {
       return;
     }
     eventsStatus.textContent = '';
-    eventsResults.innerHTML = events.map(event => `
-      <article class="card">
-        <span class="card-id">${escapeHtml(event.event_id)}</span>
-        <h3>${escapeHtml(event.name || 'Event')}</h3>
-        <p><strong>Type:</strong> ${escapeHtml(event.event_type)}</p>
-        <p><strong>Timestamp:</strong> ${escapeHtml(event.event_timestamp || '—')}</p>
-        <p class="meta">Person: ${escapeHtml(event.person_id || '—')} · Location: ${escapeHtml(event.location_id || '—')}</p>
-        ${event.source_url ? `<p><a href="${event.source_url}" target="_blank">Source</a></p>` : ''}
-      </article>
-    `).join('');
+    eventsResults.innerHTML = events.map(event => {
+      const eventId = encodeURIComponent(event.event_id);
+      return `
+        <article class="card">
+          <span class="card-id">${escapeHtml(event.event_id)}</span>
+          <h3>${escapeHtml(event.name || 'Event')}</h3>
+          <p><strong>Type:</strong> ${escapeHtml(event.event_type)}</p>
+          <p><strong>Timestamp:</strong> ${escapeHtml(event.event_timestamp || '—')}</p>
+          <p class="meta">Person: ${escapeHtml(event.person_id || '—')} · Location: ${escapeHtml(event.location_id || '—')}</p>
+          <p><a href="/event-detail.html?id=${eventId}">View details</a></p>
+          ${event.source_url ? `<p><a href="${event.source_url}" target="_blank">Source</a></p>` : ''}
+        </article>
+      `;
+    }).join('');
   } catch (err) {
     eventsStatus.textContent = 'Failed to load events.';
   }
@@ -547,6 +555,7 @@ if (sourcesForm) {
 // Person detail page
 const personDetailEl = document.getElementById('personDetail');
 const personStatusEl = document.getElementById('personStatus');
+const personIdEl = document.getElementById('personId');
 
 async function loadPersonDetail() {
   if (!personDetailEl) return;
@@ -562,6 +571,11 @@ async function loadPersonDetail() {
     const person = locationsPayload.person || {};
     const locations = locationsPayload.locations || [];
     const timeline = timelinePayload.timeline || [];
+    
+    // Show ID in top right
+    if (personIdEl) {
+      personIdEl.textContent = escapeHtml(person.pfif_id || id);
+    }
 
     personDetailEl.innerHTML = `
       <div class="card">
@@ -600,6 +614,91 @@ async function loadPersonDetail() {
 }
 
 loadPersonDetail();
+
+// Location detail page
+const locationDetailEl = document.getElementById('locationDetail');
+const locationStatusEl = document.getElementById('locationStatus');
+const locationIdEl = document.getElementById('locationId');
+
+async function loadLocationDetail() {
+  if (!locationDetailEl) return;
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (!id) {
+    locationStatusEl.textContent = 'No location id provided.';
+    return;
+  }
+  locationStatusEl.textContent = 'Loading...';
+  try {
+    const payload = await fetchJson(`/api/locations/${encodeURIComponent(id)}`);
+    const location = payload || {};
+    
+    // Show ID in top right
+    if (locationIdEl) {
+      locationIdEl.textContent = escapeHtml(location.location_id || id);
+    }
+
+    locationDetailEl.innerHTML = `
+      <div class="card">
+        <h2>${escapeHtml(location.display_name || 'Location')}</h2>
+      </div>
+      <p><strong>Canonical Name:</strong> ${escapeHtml(location.canonical_name || '—')}</p>
+      <p><strong>Type:</strong> ${escapeHtml(location.location_type || '—')}</p>
+      <p><strong>Coordinates:</strong> ${location.latitude ?? '—'}, ${location.longitude ?? '—'}</p>
+      <p><strong>Country:</strong> ${escapeHtml(location.country_name || '—')} (${escapeHtml(location.country_code || '—')})</p>
+      <p><strong>Admin1 (State/Province):</strong> ${escapeHtml(location.admin1_name || '—')}</p>
+      <p><strong>Locality (City):</strong> ${escapeHtml(location.locality || '—')}</p>
+      <p class="meta">Confidence: ${location.confidence_score ?? '—'}</p>
+    `;
+    locationStatusEl.textContent = '';
+  } catch (err) {
+    locationStatusEl.textContent = 'Failed to load location details.';
+  }
+}
+
+loadLocationDetail();
+
+// Event detail page
+const eventDetailEl = document.getElementById('eventDetail');
+const eventStatusEl = document.getElementById('eventStatus');
+const eventIdEl = document.getElementById('eventId');
+
+async function loadEventDetail() {
+  if (!eventDetailEl) return;
+  const id = new URLSearchParams(window.location.search).get('id');
+  if (!id) {
+    eventStatusEl.textContent = 'No event id provided.';
+    return;
+  }
+  eventStatusEl.textContent = 'Loading...';
+  try {
+    const payload = await fetchJson(`/api/events/${encodeURIComponent(id)}`);
+    const event = payload || {};
+    
+    // Show ID in top right
+    if (eventIdEl) {
+      eventIdEl.textContent = escapeHtml(event.event_id || id);
+    }
+
+    eventDetailEl.innerHTML = `
+      <div class="card">
+        <h2>${escapeHtml(event.name || event.event_type || 'Event')}</h2>
+      </div>
+      <p><strong>Type:</strong> ${escapeHtml(event.event_type || '—')}</p>
+      <p><strong>Timestamp:</strong> ${escapeHtml(event.event_timestamp || '—')}</p>
+      <p><strong>Person:</strong> ${escapeHtml(event.person_id || '—')}</p>
+      <p><strong>Location:</strong> ${escapeHtml(event.location_id || '—')}</p>
+      <p><strong>Confidence:</strong> ${escapeHtml(event.confidence || '—')}</p>
+      <p><strong>Visibility:</strong> ${escapeHtml(event.visibility || '—')}</p>
+      <p>${escapeHtml(event.description || '')}</p>
+      ${event.source_url ? `<p><a href="${event.source_url}" target="_blank">Source</a></p>` : ''}
+    `;
+    eventStatusEl.textContent = '';
+  } catch (err) {
+    eventStatusEl.textContent = 'Failed to load event details.';
+  }
+}
+
+loadEventDetail();
 
 // Admin forms for CRUD
 const personLocationForm = document.getElementById('personLocationForm');
