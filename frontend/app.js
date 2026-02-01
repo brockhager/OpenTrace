@@ -334,6 +334,206 @@ if (profilesEl) {
   });
 }
 
+// Admin entity management
+const loadPersonsBtn = document.getElementById('loadPersonsBtn');
+const loadLocationsBtn = document.getElementById('loadLocationsBtn');
+const loadEventsBtn = document.getElementById('loadEventsBtn');
+const loadSourcesBtn = document.getElementById('loadSourcesBtn');
+const adminPersonsList = document.getElementById('adminPersonsList');
+const adminLocationsList = document.getElementById('adminLocationsList');
+const adminEventsList = document.getElementById('adminEventsList');
+const adminSourcesList = document.getElementById('adminSourcesList');
+
+if (loadPersonsBtn) {
+  loadPersonsBtn.addEventListener('click', async () => {
+    adminPersonsList.innerHTML = 'Loading...';
+    try {
+      const payload = await fetchJson('/api/persons?limit=100', {
+        headers: getAuthHeaders()
+      });
+      const persons = payload.persons || [];
+      if (!persons.length) {
+        adminPersonsList.innerHTML = '<em>No persons found</em>';
+        return;
+      }
+      adminPersonsList.innerHTML = persons.map(p => `
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span class="card-id">${escapeHtml(p.pfif_id)}</span>
+            <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
+            <p class="meta">Status: ${escapeHtml(p.status)} | Confirmed: ${p.is_confirmed ? 'Yes' : 'No'}</p>
+          </div>
+          <div>
+            <a href="/profile.html?id=${encodeURIComponent(p.pfif_id)}" target="_blank">View</a> |
+            <button class="danger delete-person" data-pfif="${encodeURIComponent(p.pfif_id)}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      adminPersonsList.innerHTML = '<em>Failed to load persons</em>';
+    }
+  });
+}
+
+if (loadLocationsBtn) {
+  loadLocationsBtn.addEventListener('click', async () => {
+    adminLocationsList.innerHTML = 'Loading...';
+    try {
+      const payload = await fetchJson('/api/locations?limit=100', {
+        headers: getAuthHeaders()
+      });
+      const locations = payload.locations || payload || [];
+      if (!locations.length) {
+        adminLocationsList.innerHTML = '<em>No locations found</em>';
+        return;
+      }
+      adminLocationsList.innerHTML = locations.map(loc => `
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span class="card-id">${escapeHtml(loc.location_id)}</span>
+            <h4>${escapeHtml(loc.display_name)}</h4>
+            <p class="meta">${escapeHtml(loc.canonical_name)}</p>
+          </div>
+          <div>
+            <a href="/location-detail.html?id=${encodeURIComponent(loc.location_id)}" target="_blank">View</a> |
+            <button class="danger delete-location" data-id="${encodeURIComponent(loc.location_id)}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      adminLocationsList.innerHTML = '<em>Failed to load locations</em>';
+    }
+  });
+}
+
+if (loadEventsBtn) {
+  loadEventsBtn.addEventListener('click', async () => {
+    adminEventsList.innerHTML = 'Loading...';
+    try {
+      const payload = await fetchJson('/api/events?limit=100', {
+        headers: getAuthHeaders()
+      });
+      const events = payload.events || [];
+      if (!events.length) {
+        adminEventsList.innerHTML = '<em>No events found</em>';
+        return;
+      }
+      adminEventsList.innerHTML = events.map(evt => `
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span class="card-id">${escapeHtml(evt.event_id)}</span>
+            <h4>${escapeHtml(evt.name || evt.event_type)}</h4>
+            <p class="meta">${escapeHtml(evt.event_timestamp || '')}</p>
+          </div>
+          <div>
+            <a href="/event-detail.html?id=${encodeURIComponent(evt.event_id)}" target="_blank">View</a> |
+            <button class="danger delete-event" data-id="${encodeURIComponent(evt.event_id)}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      adminEventsList.innerHTML = '<em>Failed to load events</em>';
+    }
+  });
+}
+
+if (loadSourcesBtn) {
+  loadSourcesBtn.addEventListener('click', async () => {
+    adminSourcesList.innerHTML = 'Loading...';
+    try {
+      const payload = await fetchJson('/api/sources?limit=100', {
+        headers: getAuthHeaders()
+      });
+      const sources = payload.sources || [];
+      if (!sources.length) {
+        adminSourcesList.innerHTML = '<em>No sources found</em>';
+        return;
+      }
+      adminSourcesList.innerHTML = sources.map(src => `
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <span class="card-id">${escapeHtml(src.source_id)}</span>
+            <h4>${escapeHtml(src.source_name)}</h4>
+            <p class="meta">${escapeHtml(src.source_type)} | ${escapeHtml(src.source_category)}</p>
+          </div>
+          <div>
+            <button class="danger delete-source" data-id="${encodeURIComponent(src.source_id)}">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    } catch (err) {
+      adminSourcesList.innerHTML = '<em>Failed to load sources</em>';
+    }
+  });
+}
+
+// Delete handlers
+document.addEventListener('click', async (e) => {
+  if (e.target.classList.contains('delete-person')) {
+    if (!confirm('Are you sure you want to delete this person? This action cannot be undone.')) return;
+    const pfif = decodeURIComponent(e.target.dataset.pfif);
+    try {
+      const res = await fetch(`/api/persons/${encodeURIComponent(pfif)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      alert('Person deleted successfully');
+      loadPersonsBtn.click();
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  }
+  
+  if (e.target.classList.contains('delete-location')) {
+    if (!confirm('Are you sure you want to delete this location?')) return;
+    const id = decodeURIComponent(e.target.dataset.id);
+    try {
+      const res = await fetch(`/api/locations/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      alert('Location deleted successfully');
+      loadLocationsBtn.click();
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  }
+  
+  if (e.target.classList.contains('delete-event')) {
+    if (!confirm('Are you sure you want to delete this event?')) return;
+    const id = decodeURIComponent(e.target.dataset.id);
+    try {
+      const res = await fetch(`/api/events/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      alert('Event deleted successfully');
+      loadEventsBtn.click();
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  }
+  
+  if (e.target.classList.contains('delete-source')) {
+    if (!confirm('Are you sure you want to delete this source?')) return;
+    const id = decodeURIComponent(e.target.dataset.id);
+    try {
+      const res = await fetch(`/api/sources/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
+      if (!res.ok) throw new Error('Delete failed');
+      alert('Source deleted successfully');
+      loadSourcesBtn.click();
+    } catch (err) {
+      alert(`Delete failed: ${err.message}`);
+    }
+  }
+});
+
 function renderCard(p) {
   const name = `${p.given_name || ''} ${p.family_name || ''}`.trim() || 'Unnamed';
   const pfif = encodeURIComponent(p.pfif_id);
