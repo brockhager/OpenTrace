@@ -241,6 +241,11 @@ async def get_sources():
     }
 
 
+@app.get("/favicon.ico")
+async def favicon():
+    """Return 404 for favicon requests (API-only app)."""
+    raise HTTPException(status_code=404, detail="Not found")
+
 # Include admin router
 from api.admin import router as admin_router
 app.include_router(admin_router)

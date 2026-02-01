@@ -8,7 +8,7 @@ class Settings:
     
     def __init__(self):
         # Load and normalize DATABASE_URL
-        raw_db_url = os.getenv("DATABASE_URL")
+        raw_db_url = os.getenv("DATABASE_URL") or os.getenv("RAILWAY_DATABASE_URL")
         if raw_db_url and raw_db_url.startswith("postgresql://"):
             # Convert Railway's default postgresql:// to async-compatible postgresql+asyncpg://
             self.DATABASE_URL = raw_db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
