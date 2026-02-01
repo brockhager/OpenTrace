@@ -30,13 +30,17 @@ class PersonProfilePublic(BaseModel):
         from_attributes = True
 
 def sanitize_query(query: str) -> str:
-    """Sanitize search query: strip SQL patterns, limit length."""
+    """Sanitize search query: strip SQL patterns, allow '*' as wildcard (converted to '%'), limit length."""
     if not query:
         return ""
     # Remove SQL-like patterns
     query = re.sub(r'[\'";\\]', '', query)
-    # Remove excessive wildcards
+    # Convert * wildcard to SQL % wildcard and collapse multiple %
+    query = query.replace('*', '%')
     query = re.sub(r'%+', '%', query)
+    # If query is only wildcards/whitespace, treat as empty (avoid returning everything)
+    if re.fullmatch(r'[\s%]+', query):
+        return ""
     # Limit length
     return query[:100].strip()
 

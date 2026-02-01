@@ -22,6 +22,14 @@ def test_search_profiles_empty(client):
     assert data == []
 
 
+def test_search_allows_asterisk(client):
+    """Ensure wildcard * is accepted and returns a 200 and a list of results (if DB present)."""
+    response = client.get("/search?q=Jo*")
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+
+
 def test_get_profile_not_found(client):
     """Test public profile view endpoint with invalid ID."""
     response = client.get("/profiles/00000000-0000-0000-0000-000000000000")

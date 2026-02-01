@@ -1,6 +1,6 @@
 # auth/rate_limit.py
 from datetime import datetime, timedelta, timezone
-from sqlalchemy import select, func
+from sqlalchemy import select, func, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from auth.ip_log import IPLookupLog
 
@@ -14,10 +14,12 @@ async def check_rate_limit(db: AsyncSession | None, ip: str, action: str, max_pe
     if db is None:
         return True
 
-    one_hour_ago = datetime.now(timezone.utc) - timedelta(hours=1)
+    # Use naive UTC datetime to match column type (timestamp without timezone)
+    one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+    # ip_address is stored as PostgreSQL INET; cast it to text for comparison to avoid operator errors
     result = await db.execute(
         select(func.count()).select_from(IPLookupLog)
-        .where(IPLookupLog.ip_address == ip)
+        .where(func.cast(IPLookupLog.ip_address, String) == ip)
         .where(IPLookupLog.action == action)
         .where(IPLookupLog.timestamp > one_hour_ago)
         .where(IPLookupLog.success == True)
