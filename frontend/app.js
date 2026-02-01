@@ -477,10 +477,14 @@ document.addEventListener('click', async (e) => {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`${res.status}: ${errorText}`);
+      }
       alert('Person deleted successfully');
       loadPersonsBtn.click();
     } catch (err) {
+      console.error('Delete person error:', err);
       alert(`Delete failed: ${err.message}`);
     }
   }
@@ -493,10 +497,14 @@ document.addEventListener('click', async (e) => {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`${res.status}: ${errorText}`);
+      }
       alert('Location deleted successfully');
       loadLocationsBtn.click();
     } catch (err) {
+      console.error('Delete location error:', err);
       alert(`Delete failed: ${err.message}`);
     }
   }
@@ -509,10 +517,14 @@ document.addEventListener('click', async (e) => {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`${res.status}: ${errorText}`);
+      }
       alert('Event deleted successfully');
       loadEventsBtn.click();
     } catch (err) {
+      console.error('Delete event error:', err);
       alert(`Delete failed: ${err.message}`);
     }
   }
@@ -525,10 +537,14 @@ document.addEventListener('click', async (e) => {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      if (!res.ok) throw new Error('Delete failed');
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`${res.status}: ${errorText}`);
+      }
       alert('Source deleted successfully');
       loadSourcesBtn.click();
     } catch (err) {
+      console.error('Delete source error:', err);
       alert(`Delete failed: ${err.message}`);
     }
   }
