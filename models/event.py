@@ -57,6 +57,8 @@ class Event(Base):
     summary = Column(Text, comment="AI-generated summary for quick scanning")
     
     # Profile: structured metadata for traceability model
+    # NOTE: Phase 16 will add source_id FK to Source entity for provenance tracking
+    # The profile field should remain extensible to accommodate source attribution
     profile = Column(JSONB, comment="Structured metadata describing event details (traceability model)")
     
     # Source and verification
