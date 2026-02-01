@@ -7,22 +7,26 @@ CREATE TABLE event (
     -- Stable identifier
     event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
-    -- Entity relationships
+    -- Entity relationships (traceability model: person_id and location_id are optional)
     pfif_id VARCHAR(255) NOT NULL,
+    person_id VARCHAR(255),  -- Alias for pfif_id for traceability model consistency
     location_id VARCHAR(100),
     
     -- Event classification
     event_type VARCHAR(50) NOT NULL,
     event_subtype VARCHAR(50),
     
-    -- Temporal data
+    -- Temporal data (traceability model)
     event_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    event_timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),  -- ISO 8601 timestamp for traceability
     reported_date TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     
-    -- Event content
+    -- Event content (traceability model: name and profile fields)
+    name VARCHAR(500),  -- Human-readable label for traceability model
     title VARCHAR(500),
     description TEXT,
     summary TEXT,
+    profile JSONB,  -- Structured metadata for traceability model
     
     -- Source and verification
     source_type VARCHAR(50) NOT NULL,
@@ -118,8 +122,10 @@ CREATE TABLE event_evidence (
 
 -- Create indexes for Event table
 CREATE INDEX idx_event_pfif_id ON event(pfif_id);
+CREATE INDEX idx_event_person_id ON event(person_id);  -- For traceability model queries
 CREATE INDEX idx_event_location_id ON event(location_id);
 CREATE INDEX idx_event_type_date ON event(event_type, event_date);
+CREATE INDEX idx_event_timestamp ON event(event_timestamp);  -- For traceability model temporal queries
 CREATE INDEX idx_event_status ON event(event_status);
 CREATE INDEX idx_event_priority ON event(priority);
 CREATE INDEX idx_event_created ON event(created_at);
@@ -127,8 +133,10 @@ CREATE INDEX idx_event_verified ON event(is_verified);
 CREATE INDEX idx_event_public ON event(is_public);
 CREATE INDEX idx_event_source_type ON event(source_type);
 CREATE INDEX idx_event_composite ON event(pfif_id, event_date, event_status);
+CREATE INDEX idx_event_traceability ON event(person_id, location_id, event_timestamp);  -- For traceability graph queries
 CREATE INDEX idx_event_ai_processed ON event(ai_processed);
 CREATE INDEX idx_event_tags ON event USING GIN(tags);
+CREATE INDEX idx_event_profile ON event USING GIN(profile jsonb_path_ops);  -- For profile JSON queries
 
 -- Create indexes for EventEvidence table
 CREATE INDEX idx_evidence_event_id ON event_evidence(event_id);
@@ -156,7 +164,12 @@ FOREIGN KEY (event_id) REFERENCES event(event_id) ON DELETE CASCADE;
 -- Add check constraints
 ALTER TABLE event 
 ADD CONSTRAINT chk_event_type 
-CHECK (event_type IN ('sighting', 'police_report', 'status_change', 'tip', 'document', 'recovery', 'false_alarm', 'digital_trace'));
+CHECK (event_type IN (
+    -- Original event types
+    'sighting', 'police_report', 'status_change', 'tip', 'document', 'recovery', 'false_alarm', 'digital_trace',
+    -- Traceability model types (Phase 15)
+    'movement', 'inspection', 'handover', 'report', 'departure', 'arrival', 'contact', 'other'
+));
 
 ALTER TABLE event 
 ADD CONSTRAINT chk_event_status 

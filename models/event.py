@@ -5,10 +5,10 @@ Captures all temporal interactions and status changes in the missing persons eco
 Creates complete chronological timelines for each person's journey through the system.
 """
 
-from sqlalchemy import Column, String, DateTime, Boolean, Text, Integer, Numeric, JSON, Index
+from sqlalchemy import Column, String, DateTime, Boolean, Text, Integer, Numeric, Index
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.sql import func
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
+from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from uuid import uuid4
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -45,13 +45,19 @@ class Event(Base):
     # Temporal data
     event_date = Column(DateTime(timezone=True), nullable=False, index=True,
                        comment="When the event occurred (actual time)")
+    event_timestamp = Column(DateTime(timezone=True), nullable=False, index=True,
+                            comment="ISO 8601 timestamp of event occurrence (traceability model, mirrors event_date)")
     reported_date = Column(DateTime(timezone=True), nullable=False, index=True,
                          comment="When this event was reported to system")
     
     # Event content
+    name = Column(String(500), comment="Human-readable label: Departure, Inspection, Handover (traceability model)")
     title = Column(String(500), comment="Brief event title for quick scanning")
     description = Column(Text, comment="Detailed event description")
     summary = Column(Text, comment="AI-generated summary for quick scanning")
+    
+    # Profile: structured metadata for traceability model
+    profile = Column(JSONB, comment="Structured metadata describing event details (traceability model)")
     
     # Source and verification
     source_type = Column(String(50), nullable=False, index=True,
@@ -192,17 +198,22 @@ class Event(Base):
         return {
             "event_id": str(self.event_id),
             "pfif_id": self.pfif_id,
+            "person_id": self.pfif_id,  # Alias for traceability model
             "event_type": self.event_type,
             "event_subtype": self.event_subtype,
             "event_date": self.event_date.isoformat() if self.event_date else None,
+            "event_timestamp": self.event_timestamp.isoformat() if self.event_timestamp else None,
+            "name": self.name,
             "title": self.title,
             "summary": self.summary,
             "description": self.description if self.is_public else "Restricted content",
+            "profile": self.profile if self.is_public else None,
             "source_type": self.source_type,
             "source_confidence": self.source_confidence,
             "is_verified": self.is_verified,
             "evidence_count": self.evidence_count,
             "has_media": self.has_media,
+            "location_id": self.location_id,
             "location_description": self.location_description if self.is_public else None,
             "location_precision": self.location_precision,
             "reporter_name": self.reporter_name if self.is_public else None,
@@ -222,14 +233,18 @@ class Event(Base):
         return {
             "event_id": str(self.event_id),
             "pfif_id": self.pfif_id,
+            "person_id": self.pfif_id,  # Alias for traceability model
             "location_id": self.location_id,
             "event_type": self.event_type,
             "event_subtype": self.event_subtype,
             "event_date": self.event_date.isoformat() if self.event_date else None,
+            "event_timestamp": self.event_timestamp.isoformat() if self.event_timestamp else None,
             "reported_date": self.reported_date.isoformat() if self.reported_date else None,
+            "name": self.name,
             "title": self.title,
             "description": self.description,
             "summary": self.summary,
+            "profile": self.profile,
             "source_type": self.source_type,
             "source_url": self.source_url,
             "source_confidence": self.source_confidence,

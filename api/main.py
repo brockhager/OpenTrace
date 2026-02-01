@@ -297,6 +297,10 @@ app.include_router(public_router)
 from api.health import router as health_router
 app.include_router(health_router)
 
+# Include event router
+from api.event import router as event_router
+app.include_router(event_router)
+
 # Serve frontend static files and index
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
