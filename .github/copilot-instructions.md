@@ -134,6 +134,17 @@ Add a short, actionable checklist for deploying and debugging on Railway.
 
 ---
 
+## 🔧 Deployment & Debugging Notes
+
+### Database Configuration
+- **Production**: `DATABASE_URL` **must be set** for rate limiting, logging, and search to function.
+- **Development/Testing**: App degrades gracefully if `DATABASE_URL` is missing (returns empty results, skips rate limiting).
+
+### Debug Routes (Temporary)
+- `/debug-files`: Shows container file structure (verify frontend assets are present). Remove before public release.
+
+---
+
 ## Conventions
 File size: ≤700 lines (refactor at 600)
 PII handling: All sensitive data processed in-memory; never written to disk
