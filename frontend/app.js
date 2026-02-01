@@ -263,13 +263,14 @@ function renderRow(p){
   const location = p.last_seen_location || p.source_url || 'Unknown location';
   const author = p.author_name || p.primary_source || 'Unknown source';
   const id = p.pfif_id || p.id || '';
+  const pfifId = p.pfif_id || p.id || '';  // Use id as fallback for data attribute
   
   return `
     <div class="card">
       <span class="card-id">${escapeHtml(id)}</span>
       <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
       <p>${escapeHtml(location)} — ${escapeHtml(author)}</p>
-      <p><button data-pfif="${encodeURIComponent(p.pfif_id)}" class="approve">Approve</button></p>
+      <p><button data-pfif="${encodeURIComponent(pfifId)}" class="approve">Approve</button></p>
     </div>
   `;
 }
@@ -278,7 +279,15 @@ if (profilesEl) {
   profilesEl.addEventListener('click', async (e) => {
     if (!e.target.classList.contains('approve')) return;
     const pfif = decodeURIComponent(e.target.dataset.pfif);
+    
+    if (!token) {
+      alert('Not authenticated. Please log in first.');
+      return;
+    }
+    
     e.target.disabled = true;
+    e.target.textContent = 'Approving...';
+    
     try {
       // Try new Person endpoint first, fallback to old profile endpoint
       let res = await fetch('/admin/approve-person', {
@@ -290,7 +299,11 @@ if (profilesEl) {
         body: JSON.stringify({ pfif_id: pfif, confirm: true })
       });
       
-      if (!res.ok) {
+      if (!res.ok && res.status !== 404) {
+        throw new Error(`Approve failed: ${res.status}`);
+      }
+      
+      if (!res.ok || res.status === 404) {
         // Fallback to old endpoint for backward compatibility
         res = await fetch('/admin/approve-profile', {
           method: 'POST', 
@@ -302,11 +315,21 @@ if (profilesEl) {
         });
       }
       
-      if (!res.ok) throw new Error('Approve failed');
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Approve failed: ${res.status} - ${errText}`);
+      }
+      
+      const result = await res.json();
+      console.log('Approve success:', result);
+      
+      // Reload the list
       await loadUnconfirmed();
     } catch (err) {
-      if (loginStatus) loginStatus.textContent = 'Approve failed';
+      console.error('Approve error:', err);
+      if (loginStatus) loginStatus.textContent = `Approve failed: ${err.message}`;
       e.target.disabled = false;
+      e.target.textContent = 'Approve';
     }
   });
 }
