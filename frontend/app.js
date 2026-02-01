@@ -328,9 +328,16 @@ if (personsForm) {
     personsStatus.textContent = q || location ? 'Searching...' : 'Loading all confirmed profiles...';
     personsResults.innerHTML = '';
     try {
-      const url = `/search?q=${encodeURIComponent(q)}&location=${encodeURIComponent(location)}`;
+      let url;
+      if (q || location) {
+        // Use search endpoint with parameters
+        url = `/search?q=${encodeURIComponent(q)}&location=${encodeURIComponent(location)}`;
+      } else {
+        // Use persons list endpoint for browsing
+        url = '/api/persons?limit=50';
+      }
       const payload = await fetchJson(url);
-      const items = Array.isArray(payload) ? payload : (payload.results || []);
+      const items = Array.isArray(payload) ? payload : (payload.results || payload.persons || []);
       if (!items.length) {
         personsStatus.textContent = 'No results found.';
         return;
