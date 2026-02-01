@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -257,6 +258,13 @@ app.include_router(public_router)
 # Include health router
 from api.health import router as health_router
 app.include_router(health_router)
+
+# Serve frontend static files and index
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
+
+@app.get("/")
+async def root():
+    return FileResponse("frontend/index.html")
 
 
 if __name__ == "__main__":

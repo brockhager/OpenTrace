@@ -1,0 +1,20 @@
+/* Minimal responsive styles */
+:root{--max-width:720px;--accent:#0066cc}
+*{box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Arial,sans-serif;margin:0;background:#fff;color:#111}
+.site-header{height:64px;display:flex;align-items:center;padding:0 16px;border-bottom:1px solid #eee}
+.logo{font-weight:700;font-size:20px;color:var(--accent)}
+.container{max-width:var(--max-width);margin:10vh auto;padding:0 16px}
+.search-form{display:flex;gap:8px;justify-content:center}
+.search-form input[type=search]{flex:1;padding:14px;border:1px solid #ddd;border-radius:6px;font-size:16px;min-width:0}
+.search-form button{padding:10px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer}
+.status{margin:12px 0;color:#666;text-align:center}
+.results{display:grid;grid-template-columns:1fr;gap:12px;margin-top:12px}
+.card{border:1px solid #eee;padding:12px;border-radius:8px}
+.card h3{margin:0 0 6px 0}
+.card p{margin:4px 0;color:#333}
+.card .meta{font-size:13px;color:#666}
+.profile h2{margin:0 0 8px}
+.back{display:inline-block;margin-top:12px;color:var(--accent)}
+.site-footer{padding:16px;text-align:center;color:#888;border-top:1px solid #eee}
+@media(min-width:700px){.results{grid-template-columns:1fr 1fr}}

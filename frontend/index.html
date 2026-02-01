@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Opentrace</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">Opentrace</div>
+  </header>
+
+  <main class="container">
+    <form id="searchForm" class="search-form" action="/search" method="get">
+      <input id="query" name="q" type="search" placeholder="Search names, e.g. 'John'" autocomplete="off" autofocus />
+      <button type="submit">Search</button>
+    </form>
+
+    <div id="status" class="status" aria-live="polite"></div>
+    <div id="results" class="results"></div>
+  </main>
+
+  <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

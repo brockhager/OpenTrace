@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile - Opentrace</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">Opentrace</div>
+  </header>
+
+  <main class="container">
+    <div id="profile" class="profile"></div>
+    <div id="status" class="status" aria-live="polite"></div>
+    <a href="/" class="back">← Back to search</a>
+  </main>
+
+  <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
+  <script>
+    // Read ?id= from location
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('id');
+    const statusEl = document.getElementById('status');
+    const profileEl = document.getElementById('profile');
+
+    async function loadProfile() {
+      if (!id) {
+        statusEl.textContent = 'No profile id provided.';
+        return;
+      }
+      statusEl.textContent = 'Loading...';
+      try {
+        const res = await fetch(`/profile/${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error('Profile not found');
+        const json = await res.json();
+        const p = json.profile;
+        profileEl.innerHTML = `
+          <h2>${p.given_name || ''} ${p.family_name || ''} (${p.age || '—'}, ${p.sex || '—'})</h2>
+          <p><strong>Last seen:</strong> ${p.last_seen_location || 'Unknown'}</p>
+          <p><strong>Status:</strong> ${p.status}</p>
+          <p><strong>Source:</strong> ${p.source}</p>
+          ${p.profile_url ? `<p><a href="${p.profile_url}" target="_blank">View original source</a></p>` : ''}
+          <p class="attribution">${json.source_attribution || ''}</p>
+        `;
+        statusEl.textContent = '';
+      } catch (err) {
+        statusEl.textContent = 'Failed to load profile — try again.';
+      }
+    }
+
+    loadProfile();
+  </script>
+</body>
+</html>
