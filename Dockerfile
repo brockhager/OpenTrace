@@ -23,6 +23,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
+# Sanity check: ensure frontend files are included in the build context
+# Fail fast with clear message so build logs reveal missing files
+RUN if [ ! -f frontend/index.html ]; then echo "ERROR: frontend/index.html missing in build context"; echo "Contents of /app:"; ls -la /app || true; echo "Contents of /app/frontend (if any):"; ls -la /app/frontend || true; exit 1; fi
+
 # Change ownership to non-root user
 RUN chown -R opentrace:opentrace /app
 
