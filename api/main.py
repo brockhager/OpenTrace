@@ -266,6 +266,14 @@ app.mount("/static", StaticFiles(directory="frontend"), name="static")
 async def root():
     return FileResponse("frontend/index.html")
 
+@app.get("/admin.html")
+async def admin_page():
+    return FileResponse("frontend/admin.html")
+
+@app.get("/profile.html")
+async def profile_page():
+    return FileResponse("frontend/profile.html")
+
 
 if __name__ == "__main__":
     import uvicorn
