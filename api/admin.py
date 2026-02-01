@@ -100,6 +100,19 @@ async def get_review_persons(db: AsyncSession = Depends(get_db_session)):
     persons = result.scalars().all()
     return {"profiles": [person.to_admin_dict() for person in persons]}
 
+@router.get("/all-persons", dependencies=[Depends(require_admin_role("admin"))])
+async def get_all_persons(
+    limit: int = Query(100, ge=1, le=500),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """List ALL active persons (confirmed and unconfirmed) for admin management."""
+    if db is None:
+        return {"persons": [], "total": 0}
+    query = select(Person).where(Person.is_active == True).limit(limit)
+    result = await db.execute(query)
+    persons = result.scalars().all()
+    return {"persons": [p.to_admin_dict() for p in persons], "total": len(persons)}
+
 @router.post("/approve-person", dependencies=[Depends(require_admin_role("admin"))])
 async def approve_person(request: ApprovePersonRequest, user: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
     """Approve or reject a person from new Person table."""

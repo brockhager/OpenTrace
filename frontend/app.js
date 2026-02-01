@@ -348,7 +348,7 @@ if (loadPersonsBtn) {
   loadPersonsBtn.addEventListener('click', async () => {
     adminPersonsList.innerHTML = 'Loading...';
     try {
-      const payload = await fetchJson('/api/persons?limit=100', {
+      const payload = await fetchJson('/admin/all-persons?limit=100', {
         headers: getAuthHeaders()
       });
       const persons = payload.persons || [];
@@ -372,6 +372,7 @@ if (loadPersonsBtn) {
         </div>
       `).join('');
     } catch (err) {
+      console.error('Load persons error:', err);
       adminPersonsList.innerHTML = '<em>Failed to load persons</em>';
     }
   });
