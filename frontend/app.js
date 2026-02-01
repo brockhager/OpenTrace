@@ -767,7 +767,8 @@ async function loadPersonDetail() {
   personStatusEl.textContent = 'Loading...';
   try {
     // Try to fetch person details (works for both confirmed and unconfirmed if admin)
-    const headers = getAuthHeaders ? getAuthHeaders() : {};
+    const token = sessionStorage.getItem('opentrace_token');
+    const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
     const personPayload = await fetchJson(`/api/persons/${encodeURIComponent(id)}`, { headers });
     const person = personPayload.person || {};
     
