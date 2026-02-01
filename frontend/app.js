@@ -921,7 +921,8 @@ async function loadPersonDetail() {
       <p><strong>Age at disappearance:</strong> ${person.age_at_disappearance ?? '—'}</p>
       <p><strong>Sex:</strong> ${escapeHtml(person.sex || '—')}</p>
       <p><strong>Last seen:</strong> ${escapeHtml(person.date_last_seen || '—')}</p>
-      <p><strong>Source:</strong> ${person.source_url ? `<a href="${escapeHtml(person.source_url)}" target="_blank">${escapeHtml(person.primary_source || 'View Source')}</a>` : escapeHtml(person.primary_source || 'Unknown')}</p>
+      <p><strong>Source:</strong> ${person.source_url ? `<a href="${escapeHtml(person.source_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(person.source_url)}</a>${person.primary_source ? ` <em>(${escapeHtml(person.primary_source)})</em>` : ''}` : escapeHtml(person.primary_source || 'Unknown')}</p>
+      ${person.source_url ? `<p class="meta">Tip: visit the source page and use their contact/tip line to report information.</p>` : ''}
       ${person.alternate_names && person.alternate_names.length ? `<p><strong>Alternate names:</strong> ${person.alternate_names.map(escapeHtml).join(', ')}</p>` : ''}
       <section class="detail-section">
         <h3>Locations</h3>
