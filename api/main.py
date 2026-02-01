@@ -15,12 +15,10 @@ async def security_middleware(request: Request, call_next):
     from datetime import datetime
     from sqlalchemy import select
     from auth.ban_list import IPBanList
-    from auth.rate_limit import check_rate_limit
-    from auth.ip_log import IPLookupLog
     from db.session import async_session
 
-    ip = request.client.host
-    path = request.url.path
+    client = request.client
+    ip = client.host if client else "127.0.0.1"  # Default for tests
 
     async with async_session() as db:
         # Check IP ban
@@ -30,26 +28,6 @@ async def security_middleware(request: Request, call_next):
         ban = result.scalar_one_or_none()
         if ban and (ban.expires_at is None or ban.expires_at > datetime.utcnow()):
             return JSONResponse(status_code=403, content={"detail": "IP banned"})
-
-        # Rate limiting
-        limits = {
-            "/admin/login": 5,
-            "/intel/submit": 10,
-            "/intel/submit-pdf": 10,
-        }
-        if path in limits:
-            allowed = await check_rate_limit(db, ip, path, limits[path])
-            if not allowed:
-                # Log the attempt
-                log_entry = IPLookupLog(
-                    ip_address=ip,
-                    action=f"{path}_rate_limited",
-                    user_agent=request.headers.get("user-agent", ""),
-                    success=False
-                )
-                db.add(log_entry)
-                await db.commit()
-                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
 
     response = await call_next(request)
     return response
@@ -209,6 +187,10 @@ async def get_sources():
 # Include admin router
 from api.admin import router as admin_router
 app.include_router(admin_router)
+
+# Include public router
+from api.public import router as public_router
+app.include_router(public_router)
 
 
 if __name__ == "__main__":

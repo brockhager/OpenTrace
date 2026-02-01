@@ -1,5 +1,5 @@
 # api/admin.py
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from pydantic import BaseModel
@@ -9,6 +9,11 @@ from scrapers.opensanctions_client import OpenSanctionsClient
 from scrapers.charley_scraper import CharleyScraper
 from auth.ip_log import IPLookupLog
 from auth.ban_list import IPBanList
+from db.session import get_db_session
+from auth.security import create_access_token, verify_password
+from auth.models import AdminUser
+from auth.deps import get_current_admin, require_admin_role
+from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 

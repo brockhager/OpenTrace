@@ -3,7 +3,7 @@ import hashlib
 import os
 import re
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from urllib.parse import urljoin
 
 import httpx
