@@ -912,18 +912,23 @@ async function loadPersonDetail() {
 
     const confirmedBadge = person.is_confirmed ? '' : '<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.9rem; margin-left: 1rem;">Unconfirmed</span>';
 
+    // Render view mode with an optional Edit button for authenticated users
     personDetailEl.innerHTML = `
       <div class="card">
         <span class="card-id">${escapeHtml(person.pfif_id || id)}</span>
-        <h2>${escapeHtml(person.given_name || '')} ${escapeHtml(person.family_name || '')}${confirmedBadge}</h2>
+        <h2 id="personHeader">${escapeHtml(person.given_name || '')} ${escapeHtml(person.family_name || '')}${confirmedBadge}</h2>
+        <div class="person-actions">${token ? '<button id="editPersonBtn" class="approve">Edit</button>' : ''}</div>
       </div>
-      <p><strong>Status:</strong> ${escapeHtml(person.status || '—')}</p>
-      <p><strong>Age at disappearance:</strong> ${person.age_at_disappearance ?? '—'}</p>
-      <p><strong>Sex:</strong> ${escapeHtml(person.sex || '—')}</p>
-      <p><strong>Last seen:</strong> ${escapeHtml(person.date_last_seen || '—')}</p>
-      <p><strong>Source:</strong> ${person.source_url ? `<a href="${escapeHtml(person.source_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(person.source_url)}</a>${person.primary_source ? ` <em>(${escapeHtml(person.primary_source)})</em>` : ''}` : escapeHtml(person.primary_source || 'Unknown')}</p>
-      ${person.source_url ? `<p class="meta">Tip: visit the source page and use their contact/tip line to report information.</p>` : ''}
-      ${person.alternate_names && person.alternate_names.length ? `<p><strong>Alternate names:</strong> ${person.alternate_names.map(escapeHtml).join(', ')}</p>` : ''}
+
+      <div id="personViewFields">
+        <p><strong>Status:</strong> <span id="view_status">${escapeHtml(person.status || '—')}</span></p>
+        <p><strong>Age at disappearance:</strong> <span id="view_age">${person.age_at_disappearance ?? '—'}</span></p>
+        <p><strong>Sex:</strong> <span id="view_sex">${escapeHtml(person.sex || '—')}</span></p>
+        <p><strong>Last seen:</strong> <span id="view_last_seen">${escapeHtml(person.date_last_seen || '—')}</span></p>
+        <p><strong>Source:</strong> <span id="view_source">${person.source_url ? `<a href="${escapeHtml(person.source_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(person.source_url)}</a>${person.primary_source ? ` <em>(${escapeHtml(person.primary_source)})</em>` : ''}` : escapeHtml(person.primary_source || 'Unknown')}</span></p>
+        ${person.alternate_names && person.alternate_names.length ? `<p><strong>Alternate names:</strong> <span id="view_alts">${person.alternate_names.map(escapeHtml).join(', ')}</span></p>` : '<p><strong>Alternate names:</strong> <span id="view_alts">—</span></p>'}
+      </div>
+
       <section class="detail-section">
         <h3>Locations</h3>
         ${locations.length ? locations.map(loc => `
@@ -933,6 +938,7 @@ async function loadPersonDetail() {
           </div>
         `).join('') : '<p class="meta">No locations recorded.</p>'}
       </section>
+
       <section class="detail-section">
         <h3>Timeline</h3>
         ${timeline.length ? timeline.map(evt => `
@@ -945,6 +951,90 @@ async function loadPersonDetail() {
       </section>
     `;
     personStatusEl.textContent = '';
+
+    // Attach edit handlers if on an authenticated session
+    if (token && document.getElementById('editPersonBtn')) {
+      document.getElementById('editPersonBtn').addEventListener('click', () => {
+        // Replace the view fields with an edit form
+        const dateVal = person.date_last_seen ? (new Date(person.date_last_seen)).toISOString().substring(0,10) : '';
+        const alts = (person.alternate_names || []).join(', ');
+        const editHtml = `
+          <form id="personEditForm">
+            <label>Given name:<br><input id="edit_given" value="${escapeHtml(person.given_name || '')}" /></label><br>
+            <label>Family name:<br><input id="edit_family" value="${escapeHtml(person.family_name || '')}" /></label><br>
+            <label>Status:<br>
+              <select id="edit_status">
+                <option value="missing" ${person.status === 'missing' ? 'selected' : ''}>Missing</option>
+                <option value="unidentified" ${person.status === 'unidentified' ? 'selected' : ''}>Unidentified</option>
+                <option value="found" ${person.status === 'found' ? 'selected' : ''}>Found</option>
+              </select>
+            </label><br>
+            <label>Age at disappearance:<br><input id="edit_age" type="number" value="${escapeHtml(person.age_at_disappearance ?? '')}" /></label><br>
+            <label>Sex:<br>
+              <select id="edit_sex">
+                <option value="Male" ${person.sex === 'Male' ? 'selected' : ''}>Male</option>
+                <option value="Female" ${person.sex === 'Female' ? 'selected' : ''}>Female</option>
+                <option value="Unknown" ${!person.sex || person.sex === 'Unknown' ? 'selected' : ''}>Unknown</option>
+              </select>
+            </label><br>
+            <label>Last seen (date):<br><input id="edit_last_seen" type="date" value="${dateVal}" /></label><br>
+            <label>Primary source:<br><input id="edit_primary_source" value="${escapeHtml(person.primary_source || '')}" /></label><br>
+            <label>Source URL:<br><input id="edit_source_url" value="${escapeHtml(person.source_url || '')}" /></label><br>
+            <label>Alternate names (comma separated):<br><input id="edit_alts" value="${escapeHtml(alts)}" /></label><br>
+            <div style="margin-top:8px;">
+              <button id="savePersonBtn" class="approve">Save</button>
+              <button id="cancelPersonBtn" type="button" class="danger" style="margin-left:8px;">Cancel</button>
+            </div>
+          </form>
+        `;
+        document.getElementById('personViewFields').innerHTML = editHtml;
+
+        // Save handler
+        document.getElementById('personEditForm').addEventListener('submit', async (ev) => {
+          ev.preventDefault();
+          const payload = {};
+          const given = document.getElementById('edit_given').value.trim();
+          const family = document.getElementById('edit_family').value.trim();
+          const status = document.getElementById('edit_status').value;
+          const age = document.getElementById('edit_age').value;
+          const sex = document.getElementById('edit_sex').value;
+          const lastSeen = document.getElementById('edit_last_seen').value;
+          const primary = document.getElementById('edit_primary_source').value.trim();
+          const sourceUrl = document.getElementById('edit_source_url').value.trim();
+          const altsVal = document.getElementById('edit_alts').value.trim();
+
+          if (given) payload.given_name = given;
+          if (family) payload.family_name = family;
+          if (status) payload.status = status;
+          if (age) payload.age_at_disappearance = parseInt(age, 10);
+          if (sex) payload.sex = sex;
+          if (lastSeen) payload.date_last_seen = new Date(lastSeen).toISOString();
+          if (primary) payload.primary_source = primary;
+          if (sourceUrl) payload.source_url = sourceUrl;
+          if (altsVal) payload.alternate_names = altsVal.split(',').map(s => s.trim()).filter(Boolean);
+
+          try {
+            await fetchJson(`/api/persons/${encodeURIComponent(person.pfif_id || id)}`, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+              body: JSON.stringify(payload)
+            });
+            personStatusEl.textContent = 'Saved.';
+            // Reload the person detail view
+            await loadPersonDetail();
+          } catch (e) {
+            console.error('Failed to save person:', e);
+            personStatusEl.textContent = 'Failed to save changes.';
+          }
+        });
+
+        // Cancel handler
+        document.getElementById('cancelPersonBtn').addEventListener('click', async () => {
+          personStatusEl.textContent = '';
+          await loadPersonDetail();
+        });
+      });
+    }
   } catch (err) {
     console.error('Failed to load person:', err);
     personStatusEl.textContent = 'Failed to load person details. This person may not be confirmed yet or may have been deleted.';
