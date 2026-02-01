@@ -39,9 +39,17 @@ A privacy-first missing persons tracing platform that aggregates and searches ve
    ```bash
    # Create PostgreSQL database
    createdb opentrace_dev
+   
+   # Initialize schema
+   python scripts/init_db.py
    ```
 
-4. **Run the application:**
+5. **Create admin user:**
+   ```bash
+   python scripts/create_admin.py  # Or manually via psql
+   ```
+
+6. **Run the application:**
    ```bash
    uvicorn api.main:app --reload
    ```
@@ -66,12 +74,35 @@ A privacy-first missing persons tracing platform that aggregates and searches ve
    - Railway will automatically create `RAILWAY_DATABASE_URL` environment variable
    - **Important**: The app automatically converts Railway's `postgresql://` URLs to `postgresql+asyncpg://` for async compatibility
 
-3. **Environment variables:**
+3. **Initialize database schema:**
+   ```bash
+   # Option 1: Using Railway CLI (recommended)
+   railway run psql < databases/db_init.sql
+   
+   # Option 2: Using Python script
+   railway run python scripts/init_db.py
+   ```
+
+4. **Verify tables exist:**
+   ```bash
+   railway run psql -c "\dt"
+   ```
+   You should see: `person_profile`, `intel_item`, `profile_link`, `admin_user`, `ip_lookup_log`, `ip_ban_list`
+
+5. **Create admin user:**
+   ```bash
+   railway run psql -c "
+   INSERT INTO admin_user (email, hashed_password, role)
+   VALUES ('your-admin@example.com', '\$2b\$12\$your_bcrypt_hash_here', 'admin');
+   "
+   ```
+
+6. **Environment variables:**
    Set these in Railway dashboard:
    - `JWT_SECRET_KEY`: A secure random string (min 32 characters)
    - `DATABASE_URL`: Will be auto-set by Railway PostgreSQL service
 
-4. **Deploy:**
+7. **Deploy:**
    ```bash
    git push railway main
    ```

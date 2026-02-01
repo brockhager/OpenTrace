@@ -175,24 +175,27 @@ OpenTrace is a privacy-first missing persons tracing platform that aggregates ve
 - Zero hardcoded secrets (all environment-based)
 - Comprehensive environment documentation
 
-## Phase 10: SQLAlchemy 2.0 Raw SQL Compliance ✅
+## Phase 11: Database Initialization & Deployment Scripts ✅
 
-**Objective**: Fix SQLAlchemy 2.0 requirement for explicit text() declaration of raw SQL strings.
+**Objective**: Create database initialization scripts and complete deployment documentation.
 
 **Key Deliverables**:
-- **Fixed Raw SQL Execution**: Updated `api/main.py` lifespan validation to use `text()` wrapper
-- **Import Addition**: Added `text` to SQLAlchemy imports
-- **Compliance Verification**: All raw SQL strings now properly declared
+- **Database Schema**: Complete `databases/db_init.sql` with all required tables
+- **Python Init Script**: `scripts/init_db.py` for automated schema creation
+- **Admin Creation Script**: `scripts/create_admin.py` for user management
+- **Updated Documentation**: Comprehensive README with Railway deployment steps
 
 **Technical Decisions**:
-- Wrapped all raw SQL with `text()` to satisfy SQLAlchemy 2.0 security requirements
-- Maintained async compatibility with proper text() usage
-- Ensured all database validation queries use explicit text declaration
+- SQL-based schema for portability and version control
+- Python scripts for automated initialization
+- Secure admin user creation with password hashing
+- Railway CLI integration for remote database management
 
-**Root Cause Resolution**:
-- SQLAlchemy 2.0 blocks raw string SQL execution without `text()` to prevent injection
-- Fixed startup validation that was failing on Railway deployment
-- Maintained backward compatibility with existing async architecture
+**Deployment Workflow**:
+- Railway provisions empty PostgreSQL database
+- Manual schema initialization required (standard practice)
+- Admin user creation for authentication
+- Health checks verify database connectivity
 
 ## Architecture Overview
 
