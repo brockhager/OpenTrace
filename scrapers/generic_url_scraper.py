@@ -128,21 +128,53 @@ class GenericUrlScraper:
         }
 
         # Extract basic text content
-        text_content = soup.get_text()
+        text_content = soup.get_text(separator=' ')
+
+        # Try to extract name from meta tags first (og:title, twitter:title), then title tag
+        full_name = None
+        og_title = soup.find('meta', property='og:title') or soup.find('meta', attrs={'name':'og:title'})
+        if og_title and og_title.get('content'):
+            full_name = og_title['content'].strip()
+        if not full_name:
+            tw_title = soup.find('meta', attrs={'name':'twitter:title'})
+            if tw_title and tw_title.get('content'):
+                full_name = tw_title['content'].strip()
+        if not full_name:
+            if soup.title and soup.title.string:
+                # Heuristic: titles often have "Missing Person - John Doe" or "John Doe | Site"
+                title_text = soup.title.string.strip()
+                # use last segment after common separators
+                for sep in ['|', '-', '—', ':']:
+                    if sep in title_text:
+                        candidate = title_text.split(sep)[-1].strip()
+                        if 3 < len(candidate) < 100:
+                            full_name = candidate
+                            break
+                if not full_name and 3 < len(title_text) < 100:
+                    full_name = title_text
 
         # Try to find names (look for common patterns)
-        # Pattern: "Missing Person: John Doe" or "Name: John Doe"
+        # Pattern: "Missing Person: John Doe" or "Name: John Doe" or all-caps formats
         name_patterns = [
-            r'(?:missing\s+person|name|missing):?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
-            r'(?:looking\s+for|find|locate)\s*:?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)',
+            r'(?:missing\s+person|name|missing)?:?\s*([A-Z][a-zA-Z\'"\-]+(?:\s+[A-Z][a-zA-Z\'"\-]+)*)',
+            r'(?:looking\s+for|find|locate)\s*:?\s*([A-Z][a-zA-Z\'"\-]+(?:\s+[A-Z][a-zA-Z\'"\-]+)*)',
+            r'([A-Z]{2,}(?:\s+[A-Z]{2,})+)'  # ALL CAPS NAME
         ]
 
-        full_name = None
-        for pattern in name_patterns:
-            match = re.search(pattern, text_content, re.IGNORECASE)
-            if match:
-                full_name = match.group(1).strip()
-                break
+        if not full_name:
+            for pattern in name_patterns:
+                match = re.search(pattern, text_content, re.IGNORECASE)
+                if match:
+                    candidate = match.group(1).strip()
+                    # If ALL CAPS, convert to Title Case and handle "DOE, JOHN" -> "John Doe"
+                    if candidate.isupper():
+                        candidate = candidate.title()
+                        if ',' in candidate:
+                            parts = [p.strip() for p in candidate.split(',')]
+                            if len(parts) >= 2:
+                                candidate = f"{parts[1]} {parts[0]}"
+                    full_name = candidate
+                    break
 
         # If no pattern match, try to find h1 or h2 tags
         if not full_name:
@@ -151,21 +183,34 @@ class GenericUrlScraper:
                 # Filter out navigation and common header text
                 if any(x in tag_text.lower() for x in ['admin', 'menu', 'nav', 'header', 'search']):
                     continue
-                if len(tag_text) > 3 and len(tag_text) < 100:
+                if 3 < len(tag_text) < 100:
                     full_name = tag_text
                     break
 
         if full_name:
-            # Try to parse name
-            parts = full_name.split()
-            if len(parts) >= 2:
-                person_data['given_name'] = parts[0]
-                person_data['family_name'] = ' '.join(parts[1:])
-            elif len(parts) == 1:
-                person_data['given_name'] = parts[0]
-
-        # Extract age (pattern: "Age: 25" or "age 25 years")
+            # Clean up common prefixes/suffixes
+            full_name = re.sub(r'^(missing person[:\-\s]+)', '', full_name, flags=re.IGNORECASE).strip()
+            full_name = re.sub(r'(\s+\|\s+.*)$', '', full_name).strip()
+            # Try to parse name into given/family
+            # Handle "Last, First" format
+            if ',' in full_name:
+                parts = [p.strip() for p in full_name.split(',')]
+                if len(parts) >= 2:
+                    person_data['given_name'] = parts[1]
+                    person_data['family_name'] = parts[0]
+                else:
+                    person_data['given_name'] = full_name
+            else:
+                parts = full_name.split()
+                if len(parts) >= 2:
+                    person_data['given_name'] = parts[0]
+                    person_data['family_name'] = ' '.join(parts[1:])
+                elif len(parts) == 1:
+                    person_data['given_name'] = parts[0]
+        # Extract age (pattern: "Age: 25" or "age 25 years" or "25 years old")
         age_match = re.search(r'age\s*:?\s*(\d+)', text_content, re.IGNORECASE)
+        if not age_match:
+            age_match = re.search(r'(\d{1,3})\s+years\s+old', text_content, re.IGNORECASE)
         if age_match:
             try:
                 person_data['age_at_disappearance'] = int(age_match.group(1))
