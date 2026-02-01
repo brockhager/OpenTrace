@@ -39,24 +39,40 @@
         <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; margin-bottom: 2rem;">
           <div>
             <h4>👤 Persons</h4>
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+              <input type="checkbox" id="showUnconfirmedPersons" />
+              Show unconfirmed
+            </label>
             <button id="loadPersonsBtn" style="margin-bottom: 1rem; width: 100%;">Load All Persons</button>
             <div id="adminPersonsList" class="entity-grid"></div>
           </div>
 
           <div>
             <h4>📍 Locations</h4>
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+              <input type="checkbox" id="showUnconfirmedLocations" />
+              Show unconfirmed
+            </label>
             <button id="loadLocationsBtn" style="margin-bottom: 1rem; width: 100%;">Load All Locations</button>
             <div id="adminLocationsList" class="entity-grid"></div>
           </div>
 
           <div>
             <h4>📅 Events</h4>
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+              <input type="checkbox" id="showUnconfirmedEvents" />
+              Show unconfirmed
+            </label>
             <button id="loadEventsBtn" style="margin-bottom: 1rem; width: 100%;">Load All Events</button>
             <div id="adminEventsList" class="entity-grid"></div>
           </div>
 
           <div>
             <h4>🔗 Sources</h4>
+            <label style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-size: 0.9rem;">
+              <input type="checkbox" id="showUnconfirmedSources" />
+              Show unconfirmed
+            </label>
             <button id="loadSourcesBtn" style="margin-bottom: 1rem; width: 100%;">Load All Sources</button>
             <div id="adminSourcesList" class="entity-grid"></div>
           </div>

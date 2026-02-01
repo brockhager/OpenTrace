@@ -344,6 +344,18 @@ const adminLocationsList = document.getElementById('adminLocationsList');
 const adminEventsList = document.getElementById('adminEventsList');
 const adminSourcesList = document.getElementById('adminSourcesList');
 
+// Show unconfirmed toggles
+const showUnconfirmedPersons = document.getElementById('showUnconfirmedPersons');
+const showUnconfirmedLocations = document.getElementById('showUnconfirmedLocations');
+const showUnconfirmedEvents = document.getElementById('showUnconfirmedEvents');
+const showUnconfirmedSources = document.getElementById('showUnconfirmedSources');
+
+// Re-load lists when toggles change
+if (showUnconfirmedPersons) showUnconfirmedPersons.addEventListener('change', () => { if (loadPersonsBtn) loadPersonsBtn.click(); });
+if (showUnconfirmedLocations) showUnconfirmedLocations.addEventListener('change', () => { if (loadLocationsBtn) loadLocationsBtn.click(); });
+if (showUnconfirmedEvents) showUnconfirmedEvents.addEventListener('change', () => { if (loadEventsBtn) loadEventsBtn.click(); });
+if (showUnconfirmedSources) showUnconfirmedSources.addEventListener('change', () => { if (loadSourcesBtn) loadSourcesBtn.click(); });
+
 if (loadPersonsBtn) {
   loadPersonsBtn.addEventListener('click', async () => {
     adminPersonsList.innerHTML = 'Loading...';
@@ -352,13 +364,18 @@ if (loadPersonsBtn) {
         headers: getAuthHeaders()
       });
       const persons = payload.persons || [];
-      // Filter out inactive persons on client side as well (defensive)
-      const activePersons = persons.filter(p => p.is_active !== false);
-      if (!activePersons.length) {
+      // Filter by confirmed status based on checkbox
+      const showUnconfirmed = document.getElementById('showUnconfirmedPersons')?.checked;
+      const filteredPersons = persons.filter(p => {
+        if (p.is_active === false) return false; // Never show inactive
+        if (showUnconfirmed) return true; // Show all if checked
+        return p.is_confirmed === true; // Show only confirmed by default
+      });
+      if (!filteredPersons.length) {
         adminPersonsList.innerHTML = '<em>No persons found</em>';
         return;
       }
-      adminPersonsList.innerHTML = activePersons.map(p => `
+      adminPersonsList.innerHTML = filteredPersons.map(p => `
         <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span class="card-id">${escapeHtml(p.pfif_id)}</span>
@@ -386,11 +403,18 @@ if (loadLocationsBtn) {
         headers: getAuthHeaders()
       });
       const locations = payload.locations || payload || [];
-      if (!locations.length) {
+      // Filter by confirmed status based on checkbox
+      const showUnconfirmed = document.getElementById('showUnconfirmedLocations')?.checked;
+      const filteredLocations = locations.filter(loc => {
+        if (loc.is_active === false) return false;
+        if (showUnconfirmed) return true;
+        return loc.is_confirmed !== false; // Locations may not have is_confirmed field
+      });
+      if (!filteredLocations.length) {
         adminLocationsList.innerHTML = '<em>No locations found</em>';
         return;
       }
-      adminLocationsList.innerHTML = locations.map(loc => `
+      adminLocationsList.innerHTML = filteredLocations.map(loc => `
         <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span class="card-id">${escapeHtml(loc.location_id)}</span>
@@ -417,11 +441,18 @@ if (loadEventsBtn) {
         headers: getAuthHeaders()
       });
       const events = payload.events || [];
-      if (!events.length) {
+      // Filter by confirmed status based on checkbox
+      const showUnconfirmed = document.getElementById('showUnconfirmedEvents')?.checked;
+      const filteredEvents = events.filter(evt => {
+        if (evt.is_active === false) return false;
+        if (showUnconfirmed) return true;
+        return evt.is_confirmed !== false;
+      });
+      if (!filteredEvents.length) {
         adminEventsList.innerHTML = '<em>No events found</em>';
         return;
       }
-      adminEventsList.innerHTML = events.map(evt => `
+      adminEventsList.innerHTML = filteredEvents.map(evt => `
         <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span class="card-id">${escapeHtml(evt.event_id)}</span>
@@ -448,11 +479,18 @@ if (loadSourcesBtn) {
         headers: getAuthHeaders()
       });
       const sources = payload.sources || [];
-      if (!sources.length) {
+      // Filter by confirmed status based on checkbox
+      const showUnconfirmed = document.getElementById('showUnconfirmedSources')?.checked;
+      const filteredSources = sources.filter(src => {
+        if (src.is_active === false) return false;
+        if (showUnconfirmed) return true;
+        return src.is_confirmed !== false;
+      });
+      if (!filteredSources.length) {
         adminSourcesList.innerHTML = '<em>No sources found</em>';
         return;
       }
-      adminSourcesList.innerHTML = sources.map(src => `
+      adminSourcesList.innerHTML = filteredSources.map(src => `
         <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
           <div>
             <span class="card-id">${escapeHtml(src.source_id)}</span>
