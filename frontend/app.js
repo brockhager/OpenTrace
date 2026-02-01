@@ -742,7 +742,83 @@ if (urlScrapeForm) {
   });
 }
 
-const namusScrapeForm = document.getElementById('namusScrapeForm');
+// Generic URL scraper admin actions
+const genericUrlScrapeForm = document.getElementById('genericUrlScrapeForm');
+const genericUrlStatus = document.getElementById('genericUrlStatus');
+
+if (genericUrlScrapeForm) {
+  genericUrlScrapeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    genericUrlStatus.textContent = 'Scraping URL...';
+    try {
+      const url = document.getElementById('genericUrlInput').value.trim();
+      const payload = { url: url };
+      const res = await fetchJson('/admin/scrape/generic-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(payload)
+      });
+      
+      if (res.found) {
+        genericUrlStatus.textContent = `✅ ${res.message}${res.created ? ' (New record created)' : ' (Already exists)'}`;
+        if (res.person) {
+          genericUrlStatus.textContent += ` - ${res.person.given_name || ''} ${res.person.family_name || ''}`;
+        }
+      } else {
+        genericUrlStatus.textContent = `⚠️ ${res.message}`;
+      }
+      
+      genericUrlScrapeForm.reset();
+    } catch (err) {
+      genericUrlStatus.textContent = `❌ Scraping failed: ${err.message}`;
+    }
+  });
+}
+
+// PDF scraper admin actions
+const pdfScrapeForm = document.getElementById('pdfScrapeForm');
+const pdfStatus = document.getElementById('pdfStatus');
+
+if (pdfScrapeForm) {
+  pdfScrapeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    pdfStatus.textContent = 'Processing PDF...';
+    try {
+      const fileInput = document.getElementById('pdfInput');
+      const file = fileInput.files[0];
+      
+      if (!file) {
+        pdfStatus.textContent = '❌ Please select a PDF file';
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/admin/scrape/pdf', {
+        method: 'POST',
+        headers: { ...getAuthHeaders() },
+        body: formData
+      });
+      
+      const data = await res.json();
+      
+      if (res.ok && data.found) {
+        pdfStatus.textContent = `✅ ${data.message}${data.created ? ' (New record created)' : ' (Already exists)'}`;
+        if (data.person) {
+          pdfStatus.textContent += ` - ${data.person.given_name || ''} ${data.person.family_name || ''}`;
+        }
+      } else {
+        pdfStatus.textContent = `⚠️ ${data.message || 'Failed to process PDF'}`;
+      }
+      
+      pdfScrapeForm.reset();
+    } catch (err) {
+      pdfStatus.textContent = `❌ Processing failed: ${err.message}`;
+    }
+  });
+}
+
 const namusScanForm = document.getElementById('namusScanForm');
 const namusStatus = document.getElementById('namusStatus');
 

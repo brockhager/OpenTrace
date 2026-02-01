@@ -33,20 +33,34 @@
       <div id="profiles"></div>
 
       <section class="admin-section">
-        <h3>🌐 URL Scraper - NamUs</h3>
-        <p class="form-note">Paste any NamUs case URL to automatically scrape and import the data</p>
-        <form id="urlScrapeForm" class="form-grid">
-          <label>Case URL <span class="tooltip-icon" title="Paste NamUs case URL">ⓘ</span>
-            <span class="tooltip-text">Paste a full NamUs case URL like: https://www.namus.gov/MissingPersons/Case#/146858</span>
-            <input id="urlInput" type="url" placeholder="https://www.namus.gov/MissingPersons/Case#/146858" required style="grid-column: 1 / -1;" />
+        <h3>🌐 Generic URL Scraper</h3>
+        <p class="form-note">Paste any URL of a missing person page (any website) to extract and import data</p>
+        <form id="genericUrlScrapeForm" class="form-grid">
+          <label>Missing Person URL <span class="tooltip-icon" title="Any missing person page URL">ⓘ</span>
+            <span class="tooltip-text">Paste any URL from a missing persons website (NamUs, Charley Project, local police, etc.). The system will intelligently extract person name, age, last seen date, and other relevant information.</span>
+            <input id="genericUrlInput" type="url" placeholder="https://example.com/missing-person/..." required style="grid-column: 1 / -1;" />
           </label>
           <button type="submit">🔍 Scrape & Import</button>
         </form>
-        <div id="urlStatus" class="status"></div>
+        <div id="genericUrlStatus" class="status"></div>
       </section>
 
       <section class="admin-section">
-        <h3>NamUs Scraper</h3>
+        <h3>📄 PDF Scraper</h3>
+        <p class="form-note">Upload a PDF document containing missing persons information</p>
+        <form id="pdfScrapeForm" class="form-grid">
+          <label>PDF File <span class="tooltip-icon" title="Upload PDF document">ⓘ</span>
+            <span class="tooltip-text">Upload a PDF file containing missing persons data (flyers, reports, documents, etc.)</span>
+            <input id="pdfInput" type="file" accept=".pdf" required style="grid-column: 1 / -1;" />
+          </label>
+          <button type="submit">📤 Upload & Extract</button>
+        </form>
+        <div id="pdfStatus" class="status"></div>
+      </section>
+
+      <section class="admin-section">
+        <h3>🔍 NamUs Scraper</h3>
+        <p class="form-note">Scrape NamUs cases by ID or scan sequential case numbers</p>
         <form id="namusScrapeForm" class="form-grid">
           <label>Case ID <span class="tooltip-icon" title="Enter NamUs missing persons case ID">ⓘ</span>
             <span class="tooltip-text">Enter a NamUs case ID like "MP12345" or just "12345". The scraper will fetch data from NamUs public database.</span>
@@ -67,6 +81,19 @@
           <button type="submit">Scan Until Found</button>
         </form>
         <div id="namusStatus" class="status"></div>
+      </section>
+
+      <section class="admin-section">
+        <h3>🌐 URL Scraper - NamUs</h3>
+        <p class="form-note">Paste any NamUs case URL to automatically scrape and import the data</p>
+        <form id="urlScrapeForm" class="form-grid">
+          <label>Case URL <span class="tooltip-icon" title="Paste NamUs case URL">ⓘ</span>
+            <span class="tooltip-text">Paste a full NamUs case URL like: https://www.namus.gov/MissingPersons/Case#/146858</span>
+            <input id="urlInput" type="url" placeholder="https://www.namus.gov/MissingPersons/Case#/146858" required style="grid-column: 1 / -1;" />
+          </label>
+          <button type="submit">🔍 Scrape & Import</button>
+        </form>
+        <div id="urlStatus" class="status"></div>
       </section>
 
       <section class="admin-section">

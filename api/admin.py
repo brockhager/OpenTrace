@@ -8,6 +8,7 @@ from typing import Optional
 
 from scrapers.opensanctions_client import OpenSanctionsClient
 from scrapers.charley_scraper import CharleyScraper
+from scrapers.generic_url_scraper import GenericUrlScraper
 from auth.ip_log import IPLookupLog
 from auth.ban_list import IPBanList
 from db.session import get_db_session
@@ -276,6 +277,49 @@ async def scrape_from_url(request: UrlScrapeRequest):
         raise HTTPException(
             status_code=400,
             detail=f"Unsupported URL source. Currently only NamUs URLs are supported."
+        )
+
+@router.post("/scrape/generic-url", dependencies=[Depends(require_admin_role("admin"))])
+async def scrape_generic_url(request: UrlScrapeRequest, db: AsyncSession = Depends(get_db_session)):
+    """
+    Scrape data from any missing persons URL.
+    Supports common missing persons websites (not just NamUs).
+    Extracts Person, Event, and Location data using generic patterns.
+    """
+    url = request.url.strip()
+    
+    if not url.startswith(('http://', 'https://')):
+        raise HTTPException(
+            status_code=400,
+            detail="URL must start with http:// or https://"
+        )
+    
+    try:
+        async with GenericUrlScraper() as scraper:
+            person_data = await scraper.scrape_and_save_url(url)
+            
+            if not person_data:
+                return {
+                    "message": f"No missing persons data found at {url}",
+                    "found": False,
+                    "url": url
+                }
+            
+            created = person_data.pop('created', False)
+            
+            return {
+                "message": f"Successfully scraped missing persons data from URL",
+                "found": True,
+                "created": created,
+                "url": url,
+                "person": person_data
+            }
+    
+    except Exception as e:
+        logger.error(f"Error scraping generic URL: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error scraping URL: {str(e)}"
         )
 
 @router.post("/ingest/opensanctions", dependencies=[Depends(require_admin_role("admin"))])

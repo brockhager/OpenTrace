@@ -1,113 +1,206 @@
 # OpenTrace AI Coding Agent Instructions
 
+## Project Overview
+
+**Privacy-first missing persons platform** aggregating verified public data from NamUs, Interpol, and Charley Project. Built with async Python (FastAPI + SQLAlchemy 2.0 + asyncpg) and PostgreSQL.
+
+**Key Principle**: Read-heavy platform that ingests, deduplicates, and serves missing persons data from official sources. Also a community submission system.
+
 ## Architecture
 
-**Privacy-first missing persons platform** built with async Python (FastAPI + SQLAlchemy 2.0 + asyncpg).
+### Core Models (Actual, not aspirational)
+1. **Person** ([models/person.py](models/person.py)) - Single canonical entity with PFIF-compliant `pfif_id` (e.g., `opentrace.org/person/namus.MP24398`)
+   - Stable identity across multiple sources via `pfif_id`
+   - Status: `missing`, `unidentified`, `found`
+   - Privacy: Soft-delete flag `is_active` for GDPR compliance
+   - Fields: `given_name`, `family_name`, `alternate_names` (array), `age_at_disappearance`, `sex`, `date_last_seen`, `date_reported`
 
-### Core Entities (Phase 14-16)
-1. **Person** ([models/person.py](models/person.py)) - Canonical missing/found individuals with PFIF-compliant `pfif_id`
-2. **Location** ([models/location.py](models/location.py)) - Geocoded last-seen locations with PostGIS support  
-3. **Event** ([models/event.py](models/event.py)) - Timeline of disappearance/sighting events with evidence links
-4. **Source** ([models/source.py](models/source.py)) - Data provenance tracking (NamUs, Interpol, Charley Project)
+2. **Location** ([models/location.py](models/location.py)) - Last-seen geocoded locations (PostGIS-ready, not yet implemented)
 
-### Database Pattern
-- **Async-only**: All DB operations use `async with async_session() as db:` ([db/session.py](db/session.py))
-- **Graceful degradation**: If `DATABASE_URL` is None, endpoints return empty results instead of crashing
-- **URL normalization**: `core/config.py` auto-converts `postgresql://` → `postgresql+asyncpg://` for Railway compatibility
+3. **Event** ([models/event.py](models/event.py)) - Timeline of sightings/investigative updates
 
-### API Structure
-- **Public endpoints** ([api/public.py](api/public.py)): Anonymous search with rate limiting (10/hr per IP)
-- **Admin endpoints** ([api/admin.py](api/admin.py)): JWT-authenticated CRUD for Person/Location/Event/Source
-- **Health check** ([api/health.py](api/health.py)): Returns DB connectivity + uptime at `/health`
+4. **Source** ([models/source.py](models/source.py)) - Data source metadata (NamUs, Interpol, Charley)
+
+### Database Essentials
+- **Async-only**: All DB ops use `AsyncSession` via `async_session()` from [db/session.py](db/session.py)
+- **Graceful degradation**: If `DATABASE_URL=None`, endpoints return empty results instead of crashing (enables test isolation)
+- **URL normalization**: [core/config.py](core/config.py) auto-converts `postgresql://` → `postgresql+asyncpg://` (Railway compatibility)
+- **Soft deletes**: Person has `is_active` flag; queries filter `WHERE is_active = true` to support GDPR takedowns
+
+### API Layer
+- **Public routes** ([api/public.py](api/public.py)): `/search` with fuzzy name matching, rate-limited to 20/hour per IP
+- **Admin routes** ([api/admin.py](api/admin.py), [api/event.py](api/event.py), [api/location.py](api/location.py), [api/person.py](api/person.py), [api/source.py](api/source.py)): JWT-authenticated CRUD (OAuth2 scheme, token validation in [auth/deps.py](auth/deps.py))
+- **Health endpoint** ([api/health.py](api/health.py)): `/health` returns DB connectivity status
+- **Frontend static** ([frontend/](frontend/)): 8 HTML pages (index, admin, persons, events, locations, sources, profile) + shared app.js, styles.css
 
 ## Critical Development Patterns
 
-### 1. Adding New Entities
-When creating models like Person/Location/Event:
+### 1. Async-First Database Operations
+**Always** use `async with async_session() as db:` pattern. Example from [api/public.py](api/public.py):
 ```python
-# models/entity.py - Use declarative_base from models/person.py
-from models.person import Base
-class NewEntity(Base):
-    __tablename__ = "new_entity"
-    pfif_id = Column(String, primary_key=True)  # PFIF-compliant ID
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+@router.get("/search")
+async def search_profiles(
+    q: Optional[str] = None,
+    db: AsyncSession = Depends(get_db_session),
+):
+    query = select(PersonProfile).where(PersonProfile.is_confirmed == True)
+    result = await db.execute(query)
+    profiles = result.scalars().all()
 ```
+**Key**: Use `Depends(get_db_session)` to inject session; handles `None` gracefully for tests.
 
-**Migration workflow**:
-1. Create `migrations/00X_create_entity_table.sql` with DDL
-2. Test locally: `psql < migrations/00X_create_entity_table.sql`
-3. Railway: `railway run psql < migrations/00X_create_entity_table.sql`
+### 2. Authentication & Rate Limiting Pattern
+Admin routes use dependency injection chaining ([auth/deps.py](auth/deps.py)):
+```python
+async def get_current_admin(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db_session)):
+    payload = decode_token(token)  # JWT validation
+    result = await db.execute(select(AdminUser).where(AdminUser.email == payload["sub"]))
+    user = result.scalar_one_or_none()
+    return user
 
-### 2. Scraper Implementation
-All scrapers must follow [scrapers/namus_scraper.py](scrapers/namus_scraper.py) pattern:
-- **Cache results** with SHA-256 hash to detect source changes
-- **Rate limit**: 1 request/5s minimum (configurable via `RATE_LIMIT_DELAY`)
-- **robots.txt compliance**: Check before first request
-- **User-Agent**: `"Opentrace/0.1.0 (https://github.com/brockhager/OpenTrace)"`
+# Usage in route:
+@router.post("/admin/persons")
+async def create_person(
+    person_data: PersonCreate,
+    admin: AdminUser = Depends(get_current_admin),
+    db: AsyncSession = Depends(get_db_session)
+):
+    ...
 
-Example from existing code:
+# Rate limiting:
+@router.get("/search")
+async def search(..., _limiter: bool = Depends(RateLimiter("public_search", 20))):
+    # RateLimiter factory creates dependency that checks/logs rate limit
+```
+**Key**: OAuth2PasswordBearer validates token format; `decode_token()` extracts `sub` (email).
+
+### 3. Scraper Implementation Pattern
+All scrapers follow [scrapers/namus_scraper.py](scrapers/namus_scraper.py) model:
+- **Cache with hash**: SHA-256 of HTML to detect source changes (avoids unnecessary re-scraping)
+- **Rate limit**: 5+ seconds between requests (configurable `RATE_LIMIT_DELAY`)
+- **User-Agent**: `Opentrace/0.1.0 (https://github.com/brockhager/OpenTrace)` for identification
+- **Async httpx**: Use `httpx.AsyncClient` with context manager for connection pooling
+
 ```python
 async def _fetch_with_cache(self, url: str, case_id: str) -> Optional[str]:
-    cache_path = self.cache_dir / f"source_{case_id}.json"
-    if cache_path.exists() and not is_stale(cache_path):
-        return cached_content
+    cache_path = self._get_cache_path(case_id)
+    if cache_path.exists():
+        cached = json.load(open(cache_path))
+        if time.time() - cached['timestamp'] < 86400:  # 24-hour cache
+            return cached['content']
+    
     await asyncio.sleep(self.RATE_LIMIT_DELAY)
-    # Fetch and cache...
+    response = await self.client.get(url)
+    cache_data = {
+        'content': response.text,
+        'hash': self._compute_hash(response.text),
+        'timestamp': int(asyncio.get_event_loop().time())
+    }
+    json.dump(cache_data, open(cache_path, 'w'))
+    return response.text
 ```
 
-### 3. Testing Without DB
-Tests use isolated `TestClient` **without** middleware ([tests/test_public.py](tests/test_public.py)):
+**Specific Scrapers**:
+- **NamUs** ([scrapers/namus_scraper.py](scrapers/namus_scraper.py)): Government database scraper with CSS selectors for official fields
+- **Generic URL** ([scrapers/generic_url_scraper.py](scrapers/generic_url_scraper.py)): Regex-based pattern matching for any missing persons website (Charley Project, local police, etc.). Extracts name, age, date last seen, and sex using common HTML patterns. Returns `person_data` dict with `pfif_id=opentrace.org/person/generic.{hash}`.
+
+### 4. Testing Without Database
+Tests use isolated `TestClient` without middleware injection:
 ```python
 @pytest.fixture
 def client():
+    from api.public import router as public_router
     test_app = FastAPI()
     test_app.include_router(public_router)
-    return TestClient(test_app)  # No DB session dependency
-```
+    return TestClient(test_app)  # No db dependency
 
+def test_search_without_db(client):
+    response = client.get("/search?q=John")
+    assert response.status_code == 200  # Returns [] due to None db
+```
 Run: `pytest tests/ -v`
 
-### 4. Authentication Pattern
-Admin routes use dependency injection ([auth/deps.py](auth/deps.py)):
-```python
-from auth.deps import get_current_admin
+### 5. Model Patterns: PFIF Compliance
+Person model uses PFIF 1.4 fields ([models/person.py](models/person.py)):
+- `pfif_id` (primary key): `opentrace.org/person/{source}.{id}` format ensures stability
+- `given_name`, `family_name`: Separate fields for easy deduplication
+- `alternate_names`: ARRAY type for aliases/maiden names
+- `source_url`: Original record link for attribution
+- `is_confirmed`: Moderator review gate
+- `to_public_dict()`: Safe serialization (excludes sensitive fields)
 
-@router.post("/admin/edit")
-async def edit_entity(
-    data: EditRequest,
-    admin: AdminUser = Depends(get_current_admin),  # Auto-validates JWT
-    db: AsyncSession = Depends(get_db_session)
-):
-    # admin.role available here
+### 6. Input Sanitization Pattern
+Public endpoints sanitize input to prevent SQL injection and XSS ([api/public.py](api/public.py)):
+```python
+def sanitize_query(query: str) -> str:
+    query = re.sub(r'[\'";\\]', '', query)  # Remove SQL chars
+    query = re.sub(r'%+', '%', query)       # Reduce wildcards
+    return query[:100].strip()               # Length limit
+
+def is_suspicious_query(query: str) -> bool:
+    suspicious = ['union', 'select', 'drop', 'script', '<', '>', 'javascript']
+    return any(word in query.lower() for word in suspicious)
+
+@router.get("/search")
+async def search_profiles(q: Optional[str] = None, ...):
+    if q:
+        q = sanitize_query(q)
+        if is_suspicious_query(q):
+            raise HTTPException(status_code=400, detail="Invalid search query")
 ```
 
-## Deployment Essentials
+## Deployment & Local Development
 
 ### Required Environment Variables
 ```bash
-DATABASE_URL=postgresql://user:pass@host:5432/db  # Auto-converted to +asyncpg
-JWT_SECRET_KEY=<min-32-chars>  # Generate: openssl rand -hex 32
+DATABASE_URL=postgresql://user:pass@host:5432/db        # Auto-converted to +asyncpg
+JWT_SECRET_KEY=<min-32-chars>                           # Generate: openssl rand -hex 32
+LOG_RETENTION_DAYS=30                                    # Log cleanup window (optional)
+MAX_SEARCH_RESULTS=50                                    # Result limit per query (optional)
 ```
 
-### Railway-Specific Issues
-1. **DNS errors** (`getaddrinfo failed`): Use public DB URL, not `*.railway.internal`
-2. **Frontend 404s**: Verify `frontend/` files in Dockerfile COPY step ([Dockerfile](Dockerfile) line 26)
-3. **Health endpoint 503**: Check `railway logs` for DB connection errors
-
-### Local Development
+### Local Development Setup
 ```bash
-# Setup
-python -m venv venv && source venv/bin/activate
+# 1. Create virtual environment
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 2. Install dependencies
 pip install -r requirements.txt
+
+# 3. Create local database
 createdb opentrace_dev
 
-# Initialize schema
-psql opentrace_dev < databases/db_init.sql
-for f in migrations/*.sql; do psql opentrace_dev < $f; done
+# 4. Initialize schema (idempotent)
+python scripts/init_db.py
 
-# Run
+# 5. Create admin user
+python scripts/create_admin.py
+
+# 6. Run application
 uvicorn api.main:app --reload
+
+# 7. Run tests
+pytest tests/ -v
 ```
+
+### Railway Deployment Checklist
+1. **Project setup**: `railway login && railway init` (creates Railway project with PostgreSQL)
+2. **Environment**: Railway auto-creates `RAILWAY_DATABASE_URL`; app converts it to async format
+3. **Schema init**: `railway run python scripts/init_db.py`
+4. **Verify tables**: `railway run psql -c "\dt"` (should show: person, location, event, source, admin_user, etc.)
+5. **Create admin**: `railway run python scripts/create_admin.py`
+6. **Monitor**: `railway logs -s api` to tail logs
+
+### Common Issues & Fixes
+| Issue | Root Cause | Fix |
+|-------|-----------|-----|
+| `getaddrinfo failed` | DNS resolution to `*.railway.internal` only works inside Railway network | Use public DB URL or run from app shell: `railway run python` |
+| `/search` returns `[]` | DB not configured or query returns no results | Check `/health` endpoint; verify DATABASE_URL is set |
+| 401 on `/admin/persons` | JWT token missing or DB has no admin user | Create admin via `railway run python scripts/create_admin.py` |
+| Frontend 404s | Static files not mounted | Verify `frontend/` files exist in container (check Dockerfile COPY step) |
+| `/` returns 500 | Root path not implemented (API-only app) | Use `/health` or `/search` for testing; `/` not needed |
+| Favicon 404s spam | Browser requests `/favicon.ico` on page load | App already has handler returning 404 gracefully |
 
 ## Ethical Constraints (NEVER VIOLATE)
 
@@ -345,6 +438,7 @@ Add these critical endpoints to your spec:
 |----------|--------|-------------|
 | `GET /profiles/{id}/intel` | Public | Returns **only reviewed** intel items for a profile |
 | `POST /scrape/namus` | Admin-only | Trigger manual scrape of NamUs case (for testing) |
+| `POST /scrape/generic-url` | Admin-only | Scrape any missing persons URL using regex patterns (Charley Project, local police, etc.) |
 | `GET /sources` | Public | Lists all data sources (NamUs, Interpol, etc.) with last update time |
 
 ---
