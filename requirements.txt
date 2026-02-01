@@ -1,0 +1,10 @@
+# Core
+fastapi==0.110.0
+uvicorn[standard]==0.27.1
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# Data & Scraping
+httpx==0.26.0          # Async HTTP client (for OpenSanctions + respectful scraping)
+beautifulsoup4==4.12.3  # HTML parsing for NamUs/Charley Project
+lxml==4.9.4             # Faster XML parsing (for PFIF compatibility)
