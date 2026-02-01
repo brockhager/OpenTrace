@@ -65,7 +65,7 @@ app = FastAPI(title="Opentrace API", version="0.1.0", lifespan=lifespan)
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
     from datetime import datetime
-    from sqlalchemy import select
+    from sqlalchemy import select, cast, String
     from auth.ban_list import IPBanList
     from db.session import async_session
 
@@ -73,9 +73,9 @@ async def security_middleware(request: Request, call_next):
     ip = client.host if client else "127.0.0.1"  # Default for tests
 
     async with async_session() as db:
-        # Check IP ban
+        # Check IP ban (compare as text to avoid inet vs varchar operator errors)
         result = await db.execute(
-            select(IPBanList).where(IPBanList.ip_address == ip)
+            select(IPBanList).where(cast(IPBanList.ip_address, String) == ip)
         )
         ban = result.scalar_one_or_none()
         if ban and (ban.expires_at is None or ban.expires_at > datetime.utcnow()):
