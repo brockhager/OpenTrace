@@ -151,8 +151,9 @@ const reviewSection = document.getElementById('reviewSection');
 const profilesEl = document.getElementById('profiles');
 
 function getAuthHeaders() {
-  if (!token) return {};
-  return { 'Authorization': 'Bearer ' + token };
+  const t = sessionStorage.getItem('opentrace_token');
+  if (!t) return {};
+  return { 'Authorization': 'Bearer ' + t };
 }
 
 // ID generation utilities
@@ -917,7 +918,7 @@ async function loadPersonDetail() {
       <div class="card">
         <span class="card-id">${escapeHtml(person.pfif_id || id)}</span>
         <h2 id="personHeader">${escapeHtml(person.given_name || '')} ${escapeHtml(person.family_name || '')}${confirmedBadge}</h2>
-        <div class="person-actions">${token ? '<button id="editPersonBtn" class="approve">Edit</button>' : ''}</div>
+        <div class="person-actions"><button id="editPersonBtn" class="approve">Edit</button></div>
       </div>
 
       <div id="personViewFields">
@@ -952,9 +953,18 @@ async function loadPersonDetail() {
     `;
     personStatusEl.textContent = '';
 
-    // Attach edit handlers if on an authenticated session
-    if (token && document.getElementById('editPersonBtn')) {
-      document.getElementById('editPersonBtn').addEventListener('click', () => {
+    // Attach handler (button always present); check auth at click time
+    const editBtn = document.getElementById('editPersonBtn');
+    if (editBtn) {
+      editBtn.addEventListener('click', async () => {
+        const currentToken = sessionStorage.getItem('opentrace_token');
+        if (!currentToken) {
+          if (confirm('You must sign in as an admin to edit this profile. Open Admin login page?')) {
+            window.location.href = '/admin.html';
+          }
+          return;
+        }
+
         // Replace the view fields with an edit form
         const dateVal = person.date_last_seen ? (new Date(person.date_last_seen)).toISOString().substring(0,10) : '';
         const alts = (person.alternate_names || []).join(', ');
