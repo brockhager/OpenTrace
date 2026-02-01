@@ -43,6 +43,9 @@ class NamUsScanRequest(BaseModel):
     start_case_id: str
     max_checks: int = 5
 
+class UrlScrapeRequest(BaseModel):
+    url: str
+
 @router.post("/login")
 async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(get_db_session)):
     result = await db.execute(select(AdminUser).where(AdminUser.email == request.email, AdminUser.is_active == True))
@@ -218,6 +221,62 @@ async def scan_namus_until_found(request: NamUsScanRequest, db: AsyncSession = D
             }
 
     return {"message": "No public record found in scan window", "found": False}
+
+@router.post("/scrape/url", dependencies=[Depends(require_admin_role("admin"))])
+async def scrape_from_url(request: UrlScrapeRequest):
+    """Scrape data from a given URL (currently supports NamUs case pages)."""
+    url = request.url.strip()
+    
+    # Parse URL to determine source and extract case ID
+    if "namus.nij.ojp.gov" in url or "namus.gov" in url:
+        # Extract case ID from NamUs URL
+        # Examples: https://www.namus.gov/MissingPersons/Case#/146858
+        #          https://namus.nij.ojp.gov/case/MP146858
+        import re
+        
+        # Try different patterns
+        match = re.search(r'/Case#?/(\d+)', url, re.IGNORECASE)
+        if not match:
+            match = re.search(r'/case/MP?(\d+)', url, re.IGNORECASE)
+        if not match:
+            match = re.search(r'MP(\d+)', url)
+        
+        if not match:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not extract case ID from URL: {url}"
+            )
+        
+        case_id = f"MP{match.group(1)}"
+        
+        # Use NamUs scraper
+        async with NamUsScraper() as scraper:
+            person_data = await scraper.scrape_case(case_id)
+            
+            if not person_data:
+                return {
+                    "message": f"No data found at {url}",
+                    "found": False,
+                    "url": url
+                }
+            
+            # Save to database
+            created = await scraper.save_person(person_data)
+            
+            return {
+                "message": f"Successfully scraped NamUs case {case_id}",
+                "found": True,
+                "created": created,
+                "url": url,
+                "case_id": case_id,
+                "person": person_data
+            }
+    
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Unsupported URL source. Currently only NamUs URLs are supported."
+        )
 
 @router.post("/ingest/opensanctions", dependencies=[Depends(require_admin_role("admin"))])
 async def ingest_opensanctions(batch_size: int = 10, db: AsyncSession = Depends(get_db_session)):

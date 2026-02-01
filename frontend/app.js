@@ -675,6 +675,38 @@ if (sourceDeleteForm) {
 }
 
 // NamUs scraper admin actions
+const urlScrapeForm = document.getElementById('urlScrapeForm');
+const urlStatus = document.getElementById('urlStatus');
+
+if (urlScrapeForm) {
+  urlScrapeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    urlStatus.textContent = 'Scraping URL...';
+    try {
+      const url = document.getElementById('urlInput').value.trim();
+      const payload = { url: url };
+      const res = await fetchJson('/admin/scrape/url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(payload)
+      });
+      
+      if (res.found) {
+        urlStatus.textContent = `✅ ${res.message}${res.created ? ' (New record created)' : ' (Already exists)'}`;
+        if (res.person) {
+          urlStatus.textContent += ` - ${res.person.given_name || ''} ${res.person.family_name || ''}`;
+        }
+      } else {
+        urlStatus.textContent = `⚠️ ${res.message}`;
+      }
+      
+      urlScrapeForm.reset();
+    } catch (err) {
+      urlStatus.textContent = `❌ Scraping failed: ${err.message}`;
+    }
+  });
+}
+
 const namusScrapeForm = document.getElementById('namusScrapeForm');
 const namusScanForm = document.getElementById('namusScanForm');
 const namusStatus = document.getElementById('namusStatus');

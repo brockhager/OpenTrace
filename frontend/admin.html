@@ -33,6 +33,19 @@
       <div id="profiles"></div>
 
       <section class="admin-section">
+        <h3>🌐 URL Scraper - NamUs</h3>
+        <p class="form-note">Paste any NamUs case URL to automatically scrape and import the data</p>
+        <form id="urlScrapeForm" class="form-grid">
+          <label>Case URL <span class="tooltip-icon" title="Paste NamUs case URL">ⓘ</span>
+            <span class="tooltip-text">Paste a full NamUs case URL like: https://www.namus.gov/MissingPersons/Case#/146858</span>
+            <input id="urlInput" type="url" placeholder="https://www.namus.gov/MissingPersons/Case#/146858" required style="grid-column: 1 / -1;" />
+          </label>
+          <button type="submit">🔍 Scrape & Import</button>
+        </form>
+        <div id="urlStatus" class="status"></div>
+      </section>
+
+      <section class="admin-section">
         <h3>NamUs Scraper</h3>
         <form id="namusScrapeForm" class="form-grid">
           <label>Case ID <span class="tooltip-icon" title="Enter NamUs missing persons case ID">ⓘ</span>
