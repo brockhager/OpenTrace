@@ -756,6 +756,7 @@ if (sourcesForm) {
 const personDetailEl = document.getElementById('personDetail');
 const personStatusEl = document.getElementById('personStatus');
 const personIdEl = document.getElementById('personId');
+const personNameEl = document.getElementById('personName');
 
 async function loadPersonDetail() {
   if (!personDetailEl) return;
@@ -772,7 +773,11 @@ async function loadPersonDetail() {
     const personPayload = await fetchJson(`/api/persons/${encodeURIComponent(id)}`, { headers });
     const person = personPayload.person || {};
     
-    // Show ID in top right
+    // Show name and ID in header
+    const personName = `${person.given_name || ''} ${person.family_name || ''}`.trim() || 'Unnamed Person';
+    if (personNameEl) {
+      personNameEl.textContent = personName;
+    }
     if (personIdEl) {
       personIdEl.textContent = escapeHtml(person.pfif_id || id);
     }
@@ -840,6 +845,7 @@ loadPersonDetail();
 const locationDetailEl = document.getElementById('locationDetail');
 const locationStatusEl = document.getElementById('locationStatus');
 const locationIdEl = document.getElementById('locationId');
+const locationNameEl = document.getElementById('locationName');
 
 async function loadLocationDetail() {
   if (!locationDetailEl) return;
@@ -853,7 +859,10 @@ async function loadLocationDetail() {
     const payload = await fetchJson(`/api/locations/${encodeURIComponent(id)}`);
     const location = payload || {};
     
-    // Show ID in top right
+    // Show name and ID in header
+    if (locationNameEl) {
+      locationNameEl.textContent = location.display_name || 'Unknown Location';
+    }
     if (locationIdEl) {
       locationIdEl.textContent = escapeHtml(location.location_id || id);
     }
@@ -882,6 +891,7 @@ loadLocationDetail();
 const eventDetailEl = document.getElementById('eventDetail');
 const eventStatusEl = document.getElementById('eventStatus');
 const eventIdEl = document.getElementById('eventId');
+const eventNameEl = document.getElementById('eventName');
 
 async function loadEventDetail() {
   if (!eventDetailEl) return;
@@ -895,7 +905,10 @@ async function loadEventDetail() {
     const payload = await fetchJson(`/api/events/${encodeURIComponent(id)}`);
     const event = payload || {};
     
-    // Show ID in top right
+    // Show name and ID in header
+    if (eventNameEl) {
+      eventNameEl.textContent = event.name || event.event_type || 'Event';
+    }
     if (eventIdEl) {
       eventIdEl.textContent = escapeHtml(event.event_id || id);
     }
