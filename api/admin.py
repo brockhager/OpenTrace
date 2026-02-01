@@ -103,13 +103,24 @@ async def get_review_persons(db: AsyncSession = Depends(get_db_session)):
 @router.post("/approve-person", dependencies=[Depends(require_admin_role("admin"))])
 async def approve_person(request: ApprovePersonRequest, user: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
     """Approve or reject a person from new Person table."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
     stmt = update(Person).where(Person.pfif_id == request.pfif_id).values(is_confirmed=request.confirm)
     result = await db.execute(stmt)
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Person not found")
     
     # Audit log
-    audit = AuditLog(action="approve_person", actor_id=str(user.id), target_id=request.pfif_id, details={"confirmed": request.confirm, "justification": request.justification})
+    audit = AuditLog(
+        action="approve_person",
+        actor_id=str(user.id),
+        target_id=None,
+        details={
+            "pfif_id": request.pfif_id,
+            "confirmed": request.confirm,
+            "justification": request.justification,
+        },
+    )
     db.add(audit)
     
     await db.commit()
@@ -126,13 +137,24 @@ async def get_review_profiles(db: AsyncSession = Depends(get_db_session)):
 @router.post("/approve-profile", dependencies=[Depends(require_admin_role("admin"))])
 async def approve_profile(request: ApproveProfileRequest, user: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
     """Approve or reject a profile."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
     stmt = update(PersonProfile).where(PersonProfile.pfif_id == request.pfif_id).values(is_confirmed=request.confirm)
     result = await db.execute(stmt)
     if result.rowcount == 0:
         raise HTTPException(status_code=404, detail="Profile not found")
     
     # Audit log
-    audit = AuditLog(action="approve_profile", actor_id=str(user.id), target_id=request.pfif_id, details={"confirmed": request.confirm, "justification": request.justification})
+    audit = AuditLog(
+        action="approve_profile",
+        actor_id=str(user.id),
+        target_id=None,
+        details={
+            "pfif_id": request.pfif_id,
+            "confirmed": request.confirm,
+            "justification": request.justification,
+        },
+    )
     db.add(audit)
     
     await db.commit()
