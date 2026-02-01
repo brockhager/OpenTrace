@@ -1,15 +1,14 @@
-🚀 Agent4 Onboarding: Opentrace Setup Guide
-✅ Step 1: Understand the Core Data Standard
-Adopt PFIF (People Finder Interchange Format) v1.4 as your foundational schema.
-PFIF defines person (canonical profile) and note (user-submitted intel) records 
-GitHub
-.
-Study Google Person Finder’s implementation: Data Model Wiki 
-GitHub
-.
-Use XML/Atom feeds for interoperability 
-en.wikipedia.org
-.
+# OpenTrace AI Agent Guide
+
+## Architecture Overview
+
+OpenTrace is a **privacy-first missing persons tracing platform** built with async Python (FastAPI, SQLAlchemy 2.0, asyncpg). The system aggregates verified public data from official sources (NamUs, Interpol, Charley Project) while maintaining strict privacy standards.
+
+### Core Data Standard: PFIF v1.4
+The system implements **PFIF (People Finder Interchange Format) v1.4** for interoperability:
+- **Person entity**: Canonical missing person profiles ([models/person.py](models/person.py))
+- **Intel items**: User-submitted intelligence with review workflow ([api/models.py](api/models.py))
+- **Stable identifiers**: `pfif_id` format: `opentrace.org/person/namus.MP24398`
 🔍 Step 2: Connect to Verified Public Data Sources
 Only ingest from these publicly accessible, legal sources:
 Source

@@ -265,15 +265,53 @@ async def get_profile_intel(profile_id: str, db: AsyncSession = Depends(get_db_s
     return {"intel": [i.__dict__ for i in intel]}
 
 @app.get("/sources")
-async def get_sources():
-    """List data sources with last update times."""
-    return {
-        "sources": [
-            {"name": "NamUs", "last_update": "2024-01-01T00:00:00Z"},
-            {"name": "Interpol Yellow Notices", "last_update": "2024-01-01T00:00:00Z"},
-            {"name": "The Charley Project", "last_update": "2024-01-01T00:00:00Z"}
-        ]
-    }
+async def get_sources(db: AsyncSession = Depends(get_db_session)):
+    """
+    List all active data sources with last update times.
+    
+    Phase 16: Now queries the Source entity for dynamic, up-to-date source registry.
+    """
+    try:
+        from models.source import Source
+        from sqlalchemy import select
+        
+        result = await db.execute(
+            select(Source).where(Source.is_active == True).order_by(Source.source_name)
+        )
+        sources = result.scalars().all()
+        
+        return {
+            "sources": [
+                {
+                    "source_id": str(source.source_id),
+                    "name": source.source_name,
+                    "code": source.source_code,
+                    "type": source.source_type,
+                    "category": source.source_category,
+                    "trust_tier": source.trust_tier,
+                    "last_update": source.last_successful_fetch.isoformat() if source.last_successful_fetch 
+                                   else source.updated_at.isoformat() if source.updated_at 
+                                   else source.created_at.isoformat() if source.created_at 
+                                   else "2024-01-01T00:00:00Z",
+                    "reliability_score": float(source.reliability_score) if source.reliability_score else None,
+                    "is_active": source.is_active
+                }
+                for source in sources
+            ],
+            "total": len(sources)
+        }
+    except Exception as e:
+        # Fallback to static response if database unavailable
+        logger.error(f"Failed to query sources from database: {e}")
+        return {
+            "sources": [
+                {"name": "NamUs", "last_update": "2024-01-01T00:00:00Z"},
+                {"name": "Interpol Yellow Notices", "last_update": "2024-01-01T00:00:00Z"},
+                {"name": "The Charley Project", "last_update": "2024-01-01T00:00:00Z"}
+            ],
+            "total": 3,
+            "fallback": True
+        }
 
 
 @app.get("/favicon.ico")
@@ -300,6 +338,10 @@ app.include_router(health_router)
 # Include event router
 from api.event import router as event_router
 app.include_router(event_router)
+
+# Include source router
+from api.source import router as source_router
+app.include_router(source_router)
 
 # Serve frontend static files and index
 app.mount("/static", StaticFiles(directory="frontend"), name="static")

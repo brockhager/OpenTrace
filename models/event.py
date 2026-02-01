@@ -57,14 +57,14 @@ class Event(Base):
     summary = Column(Text, comment="AI-generated summary for quick scanning")
     
     # Profile: structured metadata for traceability model
-    # NOTE: Phase 16 will add source_id FK to Source entity for provenance tracking
-    # The profile field should remain extensible to accommodate source attribution
     profile = Column(JSONB, comment="Structured metadata describing event details (traceability model)")
     
-    # Source and verification
+    # Source and verification (Phase 16: Source entity provenance tracking)
+    source_id = Column(UUID(as_uuid=True), 
+                      comment="Reference to source.source_id for provenance tracking (Phase 16)")
     source_type = Column(String(50), nullable=False, index=True,
-                         comment="user_submitted, police_report, scraper, system_generated, media_report")
-    source_url = Column(String(500), comment="Original source URL or reference")
+                        comment="user_submitted, police_report, scraper, system_generated, media_report (legacy, prefer source_id)")
+    source_url = Column(String(500), comment="Original source URL or reference (legacy, prefer source_id)")
     source_confidence = Column(String(20), default="medium", index=True,
                               comment="high, medium, low - based on source reliability")
     is_verified = Column(Boolean, default=False, index=True,
@@ -126,6 +126,7 @@ class Event(Base):
         Index('idx_event_public', 'is_public'),
         Index('idx_event_source_type', 'source_type'),
         Index('idx_event_composite', 'pfif_id', 'event_date', 'event_status'),
+        Index('idx_event_source_id', 'source_id'),  # Phase 16: Source provenance tracking
     )
 
     def __repr__(self):
@@ -210,6 +211,7 @@ class Event(Base):
             "summary": self.summary,
             "description": self.description if self.is_public else "Restricted content",
             "profile": self.profile if self.is_public else None,
+            "source_id": str(self.source_id) if self.source_id else None,
             "source_type": self.source_type,
             "source_confidence": self.source_confidence,
             "is_verified": self.is_verified,
@@ -247,6 +249,7 @@ class Event(Base):
             "description": self.description,
             "summary": self.summary,
             "profile": self.profile,
+            "source_id": str(self.source_id) if self.source_id else None,
             "source_type": self.source_type,
             "source_url": self.source_url,
             "source_confidence": self.source_confidence,
