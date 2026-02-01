@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete, text
 from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
 from models.person import Person
+from models.location import Location, PersonLocation
 import os
 from contextlib import asynccontextmanager
 
@@ -120,15 +121,42 @@ def require_admin(user: dict = Depends(get_current_user)):
 
 # Public endpoints
 @app.get("/search")
-async def search_profiles(q: str, location: Optional[str] = None, db: AsyncSession = Depends(get_db_session)):
-    """Search person profiles (public or reviewed intel only)."""
+async def search_profiles(
+    q: Optional[str] = None, 
+    location: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    radius_km: int = 50,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Search person profiles with location-aware capabilities.
+    
+    Parameters:
+    - q: Name search query
+    - location: Location name search
+    - lat/lng: Coordinate search (overrides location)
+    - radius_km: Search radius for coordinate search
+    """
+    
+    # If coordinates provided, use spatial search via location API
+    if lat is not None and lng is not None:
+        # Import here to avoid circular imports
+        from api.location import find_nearby_persons
+        return await find_nearby_persons(lat, lng, radius_km, None, db)
+    
     # Use new Person model for search
     query = select(Person).where(Person.is_confirmed == True, Person.is_active == True)
     
+    # Location-based search (join with person_location)
     if location:
-        query = query.where(Person.source_url.ilike(f"%{location}%"))  # Temporary until Location entity
+        query = query.join(PersonLocation).join(Location).where(
+            Location.display_name.ilike(f"%{location}%") |
+            Location.locality.ilike(f"%{location}%") |
+            Location.admin1_name.ilike(f"%{location}%")
+        )
     
-    # Simple text search on names
+    # Name search
     if q:
         query = query.where(
             (Person.given_name.ilike(f"%{q}%")) |
@@ -252,6 +280,10 @@ async def get_sources():
 async def favicon():
     """Return 404 for favicon requests (API-only app)."""
     raise HTTPException(status_code=404, detail="Not found")
+
+# Include location router
+from api.location import router as location_router
+app.include_router(location_router)
 
 # Include admin router
 from api.admin import router as admin_router

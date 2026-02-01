@@ -76,6 +76,90 @@ body {
   background: #357ae8;
 }
 
+/* Location search controls */
+.location-search {
+  margin: 16px 0;
+  text-align: center;
+}
+
+.location-input-group {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.location-input-group input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+.location-input-group input[type="text"]:focus {
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.28);
+  border-color: var(--accent);
+}
+
+.location-input-group input[type="number"] {
+  width: 100px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 14px;
+  outline: none;
+  text-align: center;
+}
+
+.location-input-group button {
+  padding: 10px 16px;
+  background: #f8f9fa;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.location-input-group button:hover {
+  background: #e8eaed;
+  border-color: var(--accent);
+}
+
+.location-input-group button:disabled {
+  background: #f1f3f4;
+  color: #9aa0a6;
+  cursor: not-allowed;
+}
+
+#useLocation {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+#useLocation:hover {
+  background: #357ae8;
+}
+
+#clearLocation {
+  background: #ea4335;
+  color: white;
+  border-color: #ea4335;
+}
+
+#clearLocation:hover {
+  background: #d33b2c;
+}
+
 /* Admin link */
 .admin-link-container {
   margin: 16px 0;
@@ -268,6 +352,24 @@ h3 {
   }
   
   .search-form button {
+    width: 100%;
+  }
+  
+  .location-input-group {
+    flex-direction: column;
+    gap: 12px;
+  }
+  
+  .location-input-group input[type="text"] {
+    min-width: auto;
+    width: 100%;
+  }
+  
+  .location-input-group input[type="number"] {
+    width: 100%;
+  }
+  
+  .location-input-group button {
     width: 100%;
   }
   

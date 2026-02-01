@@ -15,6 +15,16 @@
       <button type="submit">Search</button>
     </form>
     
+    <!-- Location search controls -->
+    <div class="location-search">
+      <div class="location-input-group">
+        <input id="location" type="text" placeholder="Location (optional)" autocomplete="off" />
+        <input id="radius" type="number" placeholder="Radius (km)" min="1" max="500" value="50" />
+        <button id="useLocation" type="button">Use my location</button>
+        <button id="clearLocation" type="button">Clear</button>
+      </div>
+    </div>
+    
     <div class="admin-link-container">
       <a class="admin-link" href="/admin.html">Moderator Login</a>
     </div>

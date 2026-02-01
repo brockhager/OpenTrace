@@ -4,32 +4,114 @@ const queryInput = document.getElementById('query');
 const resultsEl = document.getElementById('results');
 const statusEl = document.getElementById('status');
 
+// Location search elements
+const locationInput = document.getElementById('location');
+const radiusInput = document.getElementById('radius');
+const useLocationBtn = document.getElementById('useLocation');
+const clearLocationBtn = document.getElementById('clearLocation');
+
+let userLocation = null;
+
 if (form) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const q = queryInput.value.trim();
-    if (!q) {
-      statusEl.textContent = 'Please enter a search term.';
+    const location = locationInput?.value.trim();
+    
+    if (!q && !location && !userLocation) {
+      statusEl.textContent = 'Please enter a search term or location.';
       return;
     }
+    
     statusEl.textContent = 'Searching...';
     resultsEl.innerHTML = '';
 
     try {
-      const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
+      // Build search URL with location parameters
+      let searchUrl = `/search?q=${encodeURIComponent(q || '')}`;
+      
+      if (userLocation) {
+        searchUrl += `&lat=${userLocation.lat}&lng=${userLocation.lng}`;
+        if (radiusInput?.value) {
+          searchUrl += `&radius_km=${radiusInput.value}`;
+        }
+      } else if (location) {
+        searchUrl += `&location=${encodeURIComponent(location)}`;
+      }
+      
+      const res = await fetch(searchUrl);
       if (!res.ok) throw new Error('Search failed');
       const payload = await res.json();
       const items = Array.isArray(payload) ? payload : (payload.results || []);
+      
       if (items.length === 0) {
-        statusEl.textContent = 'No results yet — Try: "Michael Johnson" or "California"';
+        statusEl.textContent = 'No results found. Try different search terms or location.';
         resultsEl.innerHTML = '';
         return;
       }
+      
       statusEl.textContent = '';
       resultsEl.innerHTML = items.map(p => renderCard(p)).join('');
     } catch (err) {
       statusEl.textContent = 'Search failed — try again.';
     }
+  });
+}
+
+// Location functionality
+if (useLocationBtn) {
+  useLocationBtn.addEventListener('click', async () => {
+    if (!navigator.geolocation) {
+      statusEl.textContent = 'Geolocation is not supported by your browser.';
+      return;
+    }
+    
+    useLocationBtn.disabled = true;
+    useLocationBtn.textContent = 'Getting location...';
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        userLocation = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+        
+        useLocationBtn.textContent = '✓ Using my location';
+        useLocationBtn.style.backgroundColor = '#34a853';
+        
+        // Get location name for display
+        try {
+          const res = await fetch(`/api/reverse-geocode?lat=${userLocation.lat}&lng=${userLocation.lng}`);
+          if (res.ok) {
+            const location = await res.json();
+            if (locationInput) {
+              locationInput.value = location.display_name;
+            }
+            statusEl.textContent = `Using location: ${location.display_name}`;
+          }
+        } catch (err) {
+          statusEl.textContent = 'Using your current location';
+        }
+      },
+      (error) => {
+        useLocationBtn.disabled = false;
+        useLocationBtn.textContent = 'Use my location';
+        statusEl.textContent = 'Could not get your location. Please enter location manually.';
+      }
+    );
+  });
+}
+
+if (clearLocationBtn) {
+  clearLocationBtn.addEventListener('click', () => {
+    userLocation = null;
+    if (locationInput) locationInput.value = '';
+    if (useLocationBtn) {
+      useLocationBtn.disabled = false;
+      useLocationBtn.textContent = 'Use my location';
+      useLocationBtn.style.backgroundColor = '';
+    }
+    statusEl.textContent = '';
   });
 }
 
