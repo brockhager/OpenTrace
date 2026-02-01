@@ -427,6 +427,34 @@ body {
   background: var(--background);
   transition: box-shadow 0.2s;
   position: relative;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.card-left {
+  flex: 1 1 auto;
+  min-width: 0; /* allow text to truncate/wrap properly in flex */
+  padding-right: 88px; /* reserve space for the .card-id */
+}
+
+.card-actions {
+  white-space: nowrap;
+}
+
+.card h3, .card h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.card p {
+  margin: 4px 0;
+  color: var(--text-secondary);
+  font-size: 14px;
 }
 
 .card:hover {

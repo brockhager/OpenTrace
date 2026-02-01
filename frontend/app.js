@@ -376,13 +376,13 @@ if (loadPersonsBtn) {
         return;
       }
       adminPersonsList.innerHTML = filteredPersons.map(p => `
-        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
+        <div class="card">
+          <div class="card-left">
             <span class="card-id">${escapeHtml(p.pfif_id)}</span>
             <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
             <p class="meta">Status: ${escapeHtml(p.status)} | Confirmed: ${p.is_confirmed ? 'Yes' : 'No'}</p>
           </div>
-          <div>
+          <div class="card-actions">
             <a href="/profile.html?id=${encodeURIComponent(p.pfif_id)}" target="_blank">View</a> |
             <button class="danger delete-person" data-pfif="${encodeURIComponent(p.pfif_id)}">Delete</button>
           </div>
@@ -415,13 +415,13 @@ if (loadLocationsBtn) {
         return;
       }
       adminLocationsList.innerHTML = filteredLocations.map(loc => `
-        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
+        <div class="card">
+          <div class="card-left">
             <span class="card-id">${escapeHtml(loc.location_id)}</span>
             <h4>${escapeHtml(loc.display_name)}</h4>
             <p class="meta">${escapeHtml(loc.canonical_name)}</p>
           </div>
-          <div>
+          <div class="card-actions">
             <a href="/location-detail.html?id=${encodeURIComponent(loc.location_id)}" target="_blank">View</a> |
             <button class="danger delete-location" data-id="${encodeURIComponent(loc.location_id)}">Delete</button>
           </div>
@@ -453,13 +453,13 @@ if (loadEventsBtn) {
         return;
       }
       adminEventsList.innerHTML = filteredEvents.map(evt => `
-        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
+        <div class="card">
+          <div class="card-left">
             <span class="card-id">${escapeHtml(evt.event_id)}</span>
             <h4>${escapeHtml(evt.name || evt.event_type)}</h4>
             <p class="meta">${escapeHtml(evt.event_timestamp || '')}</p>
           </div>
-          <div>
+          <div class="card-actions">
             <a href="/event-detail.html?id=${encodeURIComponent(evt.event_id)}" target="_blank">View</a> |
             <button class="danger delete-event" data-id="${encodeURIComponent(evt.event_id)}">Delete</button>
           </div>
@@ -491,13 +491,13 @@ if (loadSourcesBtn) {
         return;
       }
       adminSourcesList.innerHTML = filteredSources.map(src => `
-        <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-          <div>
+        <div class="card">
+          <div class="card-left">
             <span class="card-id">${escapeHtml(src.source_id)}</span>
             <h4>${escapeHtml(src.source_name)}</h4>
             <p class="meta">${escapeHtml(src.source_type)} | ${escapeHtml(src.source_category)}</p>
           </div>
-          <div>
+          <div class="card-actions">
             <button class="danger delete-source" data-id="${encodeURIComponent(src.source_id)}">Delete</button>
           </div>
         </div>
