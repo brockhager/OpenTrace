@@ -107,7 +107,11 @@ SELECT
     pp.pfif_id,
     l.location_id,
     'last_seen' as event_type,
-    pp.date_last_seen as event_date,
+    CASE
+        WHEN pp.source_date ~ '^\d{4}-\d{2}-\d{2}' THEN pp.source_date::timestamp
+        WHEN pp.source_date ~ '^\d{1,2}/\d{1,2}/\d{4}' THEN to_timestamp(pp.source_date, 'MM/DD/YYYY')
+        ELSE NULL
+    END as event_date,
     'Migrated from PersonProfile last_seen_location' as event_description,
     pp.source_url,
     'medium' as source_confidence,

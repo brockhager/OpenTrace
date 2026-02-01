@@ -2,13 +2,18 @@
 -- This adds the foreign key from Event to Source for provenance tracking
 -- Run this after deploying Source entity: psql -f migrations/006_add_event_source_id.sql
 
--- Add source_id column to event table
-ALTER TABLE event 
-ADD COLUMN source_id UUID,
-ADD COLUMN event_timestamp TIMESTAMP WITH TIME ZONE;
+-- Add source_id column to event table (idempotent)
+ALTER TABLE event ADD COLUMN IF NOT EXISTS source_id UUID;
+ALTER TABLE event ADD COLUMN IF NOT EXISTS event_timestamp TIMESTAMP WITH TIME ZONE;
 
--- Create index for source_id
-CREATE INDEX idx_event_source_id ON event(source_id);
+-- Create index for source_id if not exists
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_indexes WHERE tablename='event' AND indexname='idx_event_source_id') THEN
+    EXECUTE 'CREATE INDEX idx_event_source_id ON event(source_id)';
+  END IF;
+END;
+$$;
 
 -- Add foreign key constraint (optional - allows NULL for legacy events)
 -- Commented out to support gradual migration - uncomment when all events have source_id
