@@ -111,6 +111,10 @@ async def search_profiles(
     if source:
         query = query.where(PersonProfile.author_name == source)
 
+    # If DB is not configured (tests/local), return empty list
+    if db is None:
+        return []
+
     result = await db.execute(query)
     profiles = result.scalars().all()
 
@@ -158,7 +162,7 @@ async def search_profiles(
         "action": "public_search"
     })
 
-    return {"results": public_profiles}
+    return public_profiles
 
 @router.get("/profile/{pfif_id}")
 async def get_profile(pfif_id: str, request: Request = None, db: AsyncSession = Depends(get_db_session), _ok: bool = Depends(RateLimiter("profile_view", 50))):
