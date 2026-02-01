@@ -38,3 +38,19 @@ def require_admin_role(required_role: str = "admin"):
             )
         return user
     return role_checker
+
+
+# Rate limiter dependency factory
+def RateLimiter(action: str, max_per_hour: int):
+    from fastapi import Request
+    from db.session import get_db_session
+
+    async def limiter(request: Request, db: AsyncSession = Depends(get_db_session)):
+        ip = request.client.host if request.client else "127.0.0.1"
+        from auth.rate_limit import check_rate_limit
+        allowed = await check_rate_limit(db, ip, action, max_per_hour)
+        if not allowed:
+            raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
+        return True
+
+    return limiter

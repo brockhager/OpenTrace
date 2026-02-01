@@ -10,6 +10,7 @@ from db.session import get_db_session
 from api.models import PersonProfile
 from auth.rate_limit import check_rate_limit
 from auth.ip_log import IPLookupLog
+from auth.deps import RateLimiter
 from core.logger import logger
 
 router = APIRouter(prefix="", tags=["public"])
@@ -58,7 +59,8 @@ async def search_profiles(
     status: Optional[str] = None,
     source: Optional[str] = None,
     request: Request = None,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    _ok: bool = Depends(RateLimiter("public_search", 20))
 ):
     """Public search for confirmed missing persons profiles."""
     ip = request.client.host if request.client else "127.0.0.1"
@@ -68,10 +70,9 @@ async def search_profiles(
     if not validate_user_agent(user_agent):
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Rate limiting: 20 searches/hour
-    allowed = await check_rate_limit(db, ip, "public_search", 20)
-    if not allowed:
-        raise HTTPException(status_code=429, detail="Rate limit exceeded. Try again later.")
+    # Rate limiting: 20 searches/hour (injected dependency)
+    # Use RateLimiter dependency via FastAPI's Depends mechanism
+    # (ensures db and request are available and avoids db=None errors in tests)
 
     # Sanitize query
     if q:
@@ -160,7 +161,7 @@ async def search_profiles(
     return {"results": public_profiles}
 
 @router.get("/profile/{pfif_id}")
-async def get_profile(pfif_id: str, request: Request = None, db: AsyncSession = Depends(get_db_session)):
+async def get_profile(pfif_id: str, request: Request = None, db: AsyncSession = Depends(get_db_session), _ok: bool = Depends(RateLimiter("profile_view", 50))):
     """Public view of a confirmed profile."""
     ip = request.client.host if request.client else "127.0.0.1"
     user_agent = request.headers.get("user-agent", "")
