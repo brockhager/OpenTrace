@@ -105,6 +105,35 @@ bash
 pytest tests/ --cov=app
 # Verify no PII leaks in community submissions
 
+---
+
+## 🚀 Railway deployment & troubleshooting (Phase 10)
+Add a short, actionable checklist for deploying and debugging on Railway.
+
+- Required env vars
+  - **DATABASE_URL** (preferred public/external URL) or **RAILWAY_DATABASE_URL**. If your app runs outside Railway or you run scripts from your local machine, use the public connection string (example: `postgresql://postgres:pwd@containers-us-west-1.railway.app:5432/railway`).
+  - **JWT_SECRET_KEY** (min 32 chars)
+  - Optional: `LOG_RETENTION_DAYS`, `MAX_SEARCH_RESULTS`, `PDF_PROCESSING_TIMEOUT`.
+
+- Common gotchas we’ve encountered (and fixes):
+  - getaddrinfo / DNS failures: an internal hostname like `postgres.railway.internal` is only reachable from services inside the same Railway network. If you see `[Errno 11001] getaddrinfo failed`, use the **public DB URL** or run the command from the app service's shell (`railway run`) when both services belong to the **same Railway project**.
+  - DSN formats: the codebase **converts** `postgresql://` → `postgresql+asyncpg://` for SQLAlchemy engine automatically; do **not** pass `postgresql+asyncpg://` directly to `asyncpg.connect()` when testing — use `postgresql://`.
+  - Root (/) route: this is an API-only app. A browser requesting `/` may show a 500 in developer tools; verify using `/health` and `/search` instead.
+  - Favicon requests: we added a dedicated `/favicon.ico` handler to return 404 to avoid 500s from browsers.
+
+- Useful Railway commands
+  - View env vars: `railway variables` or use Railway UI
+  - Run scripts inside Railway environment: `railway run python scripts/init_db.py`
+  - Tail logs: `railway logs -s <service-name>` (or use the UI Logs tab)
+  - Quick DB test helper: `railway run python test_db.py` (checks DNS + credentials)
+
+- Quick guidance for failures
+  1. Check `/health` to confirm app vs DB state. `curl https://<your-app>/health`.
+  2. If DB connection fails, confirm `DATABASE_URL` points to a public host OR that your app and DB are in the same Railway project and you’re running inside that service.
+  3. Use `railway logs` to get stack traces and timestamps.
+
+---
+
 ## Conventions
 File size: ≤700 lines (refactor at 600)
 PII handling: All sensitive data processed in-memory; never written to disk
