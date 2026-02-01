@@ -76,7 +76,7 @@ async def list_persons(
     return {"persons": [p.to_public_dict() for p in persons], "total": len(persons)}
 
 
-@router.get("/{pfif_id}")
+@router.get("/{pfif_id:path}")
 async def get_person(
     pfif_id: str,
     db: AsyncSession = Depends(get_db_session),
@@ -116,7 +116,7 @@ async def create_person(
     return {"pfif_id": person.pfif_id}
 
 
-@router.patch("/{pfif_id}")
+@router.patch("/{pfif_id:path}")
 async def update_person(
     pfif_id: str,
     request: PersonUpdateRequest,
@@ -134,7 +134,7 @@ async def update_person(
     return {"message": "Person updated"}
 
 
-@router.delete("/{pfif_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{pfif_id:path}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_person(
     pfif_id: str,
     db: AsyncSession = Depends(get_db_session),

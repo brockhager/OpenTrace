@@ -164,7 +164,7 @@ async def search_profiles(
 
     return public_profiles
 
-@router.get("/profile/{pfif_id}")
+@router.get("/profile/{pfif_id:path}")
 async def get_profile(pfif_id: str, request: Request = None, db: AsyncSession = Depends(get_db_session), _ok: bool = Depends(RateLimiter("profile_view", 50))):
     """Public view of a confirmed profile."""
     ip = request.client.host if request.client else "127.0.0.1"

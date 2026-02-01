@@ -340,7 +340,7 @@ async def get_location(
     )
 
 
-@router.get("/persons/{pfif_id}/locations")
+@router.get("/persons/{pfif_id:path}/locations")
 async def get_person_locations(
     pfif_id: str,
     db: AsyncSession = Depends(get_db_session)
@@ -383,7 +383,7 @@ async def get_person_locations(
         raise HTTPException(status_code=500, detail=f"Failed to get person locations: {str(e)}")
 
 
-@router.post("/persons/{pfif_id}/locations")
+@router.post("/persons/{pfif_id:path}/locations")
 async def add_person_location(
     pfif_id: str,
     location_data: dict,
