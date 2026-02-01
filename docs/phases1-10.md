@@ -175,21 +175,24 @@ OpenTrace is a privacy-first missing persons tracing platform that aggregates ve
 - Zero hardcoded secrets (all environment-based)
 - Comprehensive environment documentation
 
-## Phase 10: Async Database Driver Resolution ✅
+## Phase 10: SQLAlchemy 2.0 Raw SQL Compliance ✅
 
-**Objective**: Fix Railway deployment compatibility with async PostgreSQL driver.
+**Objective**: Fix SQLAlchemy 2.0 requirement for explicit text() declaration of raw SQL strings.
 
 **Key Deliverables**:
-- **Automatic URL Conversion**: `postgresql://` → `postgresql+asyncpg://` in config
-- **Railway Compatibility**: Seamless integration with Railway's default DATABASE_URL
-- **Backward Compatibility**: Existing `postgresql+asyncpg://` URLs unchanged
-- **Documentation Updates**: README.md with deployment instructions
+- **Fixed Raw SQL Execution**: Updated `api/main.py` lifespan validation to use `text()` wrapper
+- **Import Addition**: Added `text` to SQLAlchemy imports
+- **Compliance Verification**: All raw SQL strings now properly declared
 
 **Technical Decisions**:
-- Automatic driver scheme conversion in `core/config.py`
-- No manual configuration required for Railway users
-- Maintains async architecture integrity
-- Comprehensive README with deployment workflows
+- Wrapped all raw SQL with `text()` to satisfy SQLAlchemy 2.0 security requirements
+- Maintained async compatibility with proper text() usage
+- Ensured all database validation queries use explicit text declaration
+
+**Root Cause Resolution**:
+- SQLAlchemy 2.0 blocks raw string SQL execution without `text()` to prevent injection
+- Fixed startup validation that was failing on Railway deployment
+- Maintained backward compatibility with existing async architecture
 
 ## Architecture Overview
 

@@ -3,7 +3,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, text
 from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
 import os
 from contextlib import asynccontextmanager
@@ -32,7 +32,8 @@ async def lifespan(app: FastAPI):
             # Check critical tables exist
             tables = ["person_profile", "admin_user"]
             for table in tables:
-                result = await db.execute(f"SELECT 1 FROM {table} LIMIT 1")
+                stmt = text(f"SELECT 1 FROM {table} LIMIT 1")
+                result = await db.execute(stmt)
                 if not result:
                     logger.warning(f"Table {table} may not exist or is empty", extra={"table": table})
             logger.info("Database connectivity verified", extra={"action": "db_check"})
