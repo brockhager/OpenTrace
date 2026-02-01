@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Moderator Login - Opentrace</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">Opentrace</div>
+  </header>
+
+  <main class="container">
+    <h2>Moderator Login</h2>
+    <form id="loginForm" class="login-form">
+      <label>Email <input id="email" type="email" required value="brockhager@gmail.com"/></label>
+      <label>Password <input id="password" type="password" required /></label>
+      <button type="submit">Sign in</button>
+    </form>
+
+    <div id="loginStatus" class="status" aria-live="polite"></div>
+
+    <section id="reviewSection" style="display:none;">
+      <h3>Unconfirmed Profiles</h3>
+      <div id="profiles"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
+
+  <script>
+    let token = null;
+    const loginForm = document.getElementById('loginForm');
+    const loginStatus = document.getElementById('loginStatus');
+    const reviewSection = document.getElementById('reviewSection');
+    const profilesEl = document.getElementById('profiles');
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      loginStatus.textContent = 'Signing in...';
+
+      try {
+        const res = await fetch('/admin/login', {
+          method: 'POST', headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password})
+        });
+        if (!res.ok) throw new Error('Login failed');
+        const data = await res.json();
+        token = data.access_token;
+        loginStatus.textContent = 'Signed in';
+        reviewSection.style.display = 'block';
+        await loadUnconfirmed();
+      } catch (err) {
+        loginStatus.textContent = 'Sign-in failed — check credentials';
+      }
+    });
+
+    async function loadUnconfirmed(){
+      profilesEl.innerHTML = 'Loading...';
+      try {
+        const res = await fetch('/admin/review-profiles', { headers: { 'Authorization': 'Bearer ' + token }});
+        if (!res.ok) throw new Error('Failed to load');
+        const data = await res.json();
+        const profiles = data.profiles || [];
+        if (profiles.length === 0){ profilesEl.innerHTML = '<em>No unconfirmed profiles</em>'; return; }
+        profilesEl.innerHTML = profiles.map(p => renderRow(p)).join('');
+      } catch (err) {
+        profilesEl.innerHTML = '<em>Failed to load profiles</em>';
+      }
+    }
+
+    function renderRow(p){
+      return `
+        <div class="card">
+          <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
+          <p>${escapeHtml(p.last_seen_location || '')} — ${escapeHtml(p.author_name || '')}</p>
+          <p><button data-pfif="${encodeURIComponent(p.pfif_id)}" class="approve">Approve</button></p>
+        </div>
+      `;
+    }
+
+    profilesEl.addEventListener('click', async (e) => {
+      if (!e.target.classList.contains('approve')) return;
+      const pfif = decodeURIComponent(e.target.dataset.pfif);
+      e.target.disabled = true;
+      try {
+        const res = await fetch('/admin/approve-profile', {
+          method: 'POST', headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pfif_id: pfif, confirm: true })
+        });
+        if (!res.ok) throw new Error('Approve failed');
+        await loadUnconfirmed();
+      } catch (err) {
+        loginStatus.textContent = 'Approve failed';
+        e.target.disabled = false;
+      }
+    });
+
+    function escapeHtml(s){ return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  </script>
+</body>
+</html>

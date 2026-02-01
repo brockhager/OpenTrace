@@ -17,4 +17,6 @@ body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,Helvetica,Aria
 .profile h2{margin:0 0 8px}
 .back{display:inline-block;margin-top:12px;color:var(--accent)}
 .site-footer{padding:16px;text-align:center;color:#888;border-top:1px solid #eee}
+.admin-link{display:inline-block;margin-left:12px;color:var(--accent);font-weight:600} 
+.hint{margin-bottom:12px;color:#333;text-align:center}
 @media(min-width:700px){.results{grid-template-columns:1fr 1fr}}

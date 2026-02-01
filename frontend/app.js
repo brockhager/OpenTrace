@@ -17,9 +17,11 @@ form.addEventListener('submit', async (e) => {
     const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
     if (!res.ok) throw new Error('Search failed');
     const payload = await res.json();
-    const items = payload.results || [];
+    // Support old ({results: []}) and new ([]) response shapes
+    const items = Array.isArray(payload) ? payload : (payload.results || []);
     if (items.length === 0) {
-      statusEl.textContent = 'No results found.';
+      statusEl.textContent = 'No results yet — Try: "Michael Johnson" or "California"';
+      resultsEl.innerHTML = '';
       return;
     }
     statusEl.textContent = '';

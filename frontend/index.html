@@ -12,12 +12,14 @@
   </header>
 
   <main class="container">
+    <p class="hint">Search verified missing persons records — <strong>Try: "Michael Johnson" or "California"</strong></p>
     <form id="searchForm" class="search-form" action="/search" method="get">
-      <input id="query" name="q" type="search" placeholder="Search names, e.g. 'John'" autocomplete="off" autofocus />
+      <input id="query" name="q" type="search" placeholder="Search names, e.g. 'Michael Johnson'" autocomplete="off" autofocus />
       <button type="submit">Search</button>
+      <a class="admin-link" href="/admin.html">Moderator Login</a>
     </form>
 
-    <div id="status" class="status" aria-live="polite"></div>
+    <div id="status" class="status" aria-live="polite">No results yet — Try: "Michael Johnson" or "California"</div>
     <div id="results" class="results"></div>
   </main>
 
