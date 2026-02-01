@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -7,6 +8,51 @@ from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
 import os
 
 app = FastAPI(title="Opentrace API", version="0.1.0")
+
+# Security middleware
+@app.middleware("http")
+async def security_middleware(request: Request, call_next):
+    from datetime import datetime
+    from sqlalchemy import select
+    from auth.ban_list import IPBanList
+    from auth.rate_limit import check_rate_limit
+    from auth.ip_log import IPLookupLog
+    from db.session import async_session
+
+    ip = request.client.host
+    path = request.url.path
+
+    async with async_session() as db:
+        # Check IP ban
+        result = await db.execute(
+            select(IPBanList).where(IPBanList.ip_address == ip)
+        )
+        ban = result.scalar_one_or_none()
+        if ban and (ban.expires_at is None or ban.expires_at > datetime.utcnow()):
+            return JSONResponse(status_code=403, content={"detail": "IP banned"})
+
+        # Rate limiting
+        limits = {
+            "/admin/login": 5,
+            "/intel/submit": 10,
+            "/intel/submit-pdf": 10,
+        }
+        if path in limits:
+            allowed = await check_rate_limit(db, ip, path, limits[path])
+            if not allowed:
+                # Log the attempt
+                log_entry = IPLookupLog(
+                    ip_address=ip,
+                    action=f"{path}_rate_limited",
+                    user_agent=request.headers.get("user-agent", ""),
+                    success=False
+                )
+                db.add(log_entry)
+                await db.commit()
+                return JSONResponse(status_code=429, content={"detail": "Rate limit exceeded"})
+
+    response = await call_next(request)
+    return response
 
 # Database setup moved to db/session.py
 from db.session import get_db_session
@@ -20,6 +66,10 @@ class IntelItemRequest(BaseModel):
 
 class BulkIntelRequest(BaseModel):
     items: List[IntelItemRequest]
+
+class PDFSubmitRequest(BaseModel):
+    pdf_url: str
+    note: Optional[str] = ""
 
 # Mock authentication (replace with real JWT/OAuth)
 def get_current_user():
@@ -50,7 +100,7 @@ async def search_profiles(q: str, location: Optional[str] = None, db: AsyncSessi
     return {"results": [p.__dict__ for p in profiles]}
 
 @app.post("/intel/submit")
-async def submit_intel(item: IntelItemRequest, db: AsyncSession = Depends(get_db_session)):
+async def submit_intel(item: IntelItemRequest, req: Request, db: AsyncSession = Depends(get_db_session)):
     """Submit community intel (requires source_url)."""
     if not item.source_url:
         raise HTTPException(status_code=400, detail="source_url required")
@@ -70,6 +120,17 @@ async def submit_intel(item: IntelItemRequest, db: AsyncSession = Depends(get_db
     )
     db.add(intel)
     await db.commit()
+
+    # Log submission
+    log_entry = IPLookupLog(
+        ip_address=req.client.host,
+        action="/intel/submit",
+        user_agent=req.headers.get("user-agent", ""),
+        success=True
+    )
+    db.add(log_entry)
+    await db.commit()
+
     return {"message": "Intel submitted for review"}
 
 @app.post("/intel/bulk-submit")
@@ -95,6 +156,35 @@ async def bulk_submit_intel(request: BulkIntelRequest, user: dict = Depends(get_
         db.add(intel)
     await db.commit()
     return {"message": f"Bulk submitted {len(request.items)} items"}
+
+@app.post("/intel/submit-pdf")
+async def submit_pdf(request: PDFSubmitRequest, req: Request, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db_session)):
+    """Submit public PDF URL for processing."""
+    from scrapers.pdf_processor import PDFProcessor
+    # Validate URL basic
+    from urllib.parse import urlparse
+    parsed = urlparse(request.pdf_url)
+    if parsed.scheme != "https":
+        raise HTTPException(status_code=400, detail="Only HTTPS URLs allowed")
+
+    # Log submission attempt
+    log_entry = IPLookupLog(
+        ip_address=req.client.host,
+        action="/intel/submit-pdf",
+        user_agent=req.headers.get("user-agent", ""),
+        success=True
+    )
+    db.add(log_entry)
+    await db.commit()
+
+    # Enqueue processing
+    async def process():
+        async with async_session() as db_inner:
+            async with PDFProcessor() as processor:
+                await processor.process_pdf(request.pdf_url, request.note, db_inner)
+
+    background_tasks.add_task(process)
+    return {"message": "PDF submission accepted for processing", "status": "processing"}
 
 @app.get("/profiles/{profile_id}/intel")
 async def get_profile_intel(profile_id: str, db: AsyncSession = Depends(get_db_session)):

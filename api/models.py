@@ -77,6 +77,7 @@ class IntelItem(Base):
     category = Column(String)
     confidence_rating = Column(String, default="low")
     reviewed = Column(Boolean, default=False)
+    expiry_date = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(days=90))
 
     # Relationships
     profile = relationship("PersonProfile", back_populates="intel_items")

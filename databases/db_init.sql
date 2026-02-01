@@ -26,9 +26,10 @@ CREATE TABLE intel_item (
   author_name TEXT, -- Anonymous submitter ID
   source_url TEXT NOT NULL,
   text TEXT,
-  category TEXT CHECK (category IN ('photo', 'social_profile', 'sighting', 'associate')),
+  category TEXT CHECK (category IN ('photo', 'social_profile', 'sighting', 'associate', 'pdf_document')),
   confidence_rating TEXT DEFAULT 'low' CHECK (confidence_rating IN ('low', 'medium', 'high')),
-  reviewed BOOLEAN DEFAULT FALSE
+  reviewed BOOLEAN DEFAULT FALSE,
+  expiry_date TIMESTAMPTZ DEFAULT (NOW() + INTERVAL '90 days')
 );
 
 -- Profile links (admin decisions)
@@ -60,6 +61,26 @@ CREATE TABLE admin_user (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 CREATE INDEX idx_admin_email ON admin_user(email);
+
+-- IP lookup logs for security
+CREATE TABLE ip_lookup_log (
+  id SERIAL PRIMARY KEY,
+  ip_address INET NOT NULL,
+  action TEXT NOT NULL,
+  timestamp TIMESTAMPTZ DEFAULT NOW(),
+  user_agent TEXT,
+  success BOOLEAN DEFAULT true
+);
+CREATE INDEX idx_ip_action ON ip_lookup_log(ip_address, action);
+
+-- IP ban list
+CREATE TABLE ip_ban_list (
+  id SERIAL PRIMARY KEY,
+  ip_address INET UNIQUE NOT NULL,
+  reason TEXT,
+  banned_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ  -- NULL = permanent
+);
 
 -- Indexes
 CREATE INDEX ix_person_profile_pfif_id ON person_profile(pfif_id);

@@ -7,6 +7,8 @@ from typing import Optional
 
 from scrapers.opensanctions_client import OpenSanctionsClient
 from scrapers.charley_scraper import CharleyScraper
+from auth.ip_log import IPLookupLog
+from auth.ban_list import IPBanList
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -20,16 +22,32 @@ class ApproveProfileRequest(BaseModel):
     justification: Optional[str] = None
 
 @router.post("/login")
-async def login(request: LoginRequest, db: AsyncSession = Depends(get_db_session)):
+async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(get_db_session)):
     result = await db.execute(select(AdminUser).where(AdminUser.email == request.email, AdminUser.is_active == True))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(request.password, user.hashed_password):
+    success = False
+    if user and verify_password(request.password, user.hashed_password):
+        access_token = create_access_token(data={"sub": user.email, "role": user.role})
+        success = True
+    else:
+        access_token = None
+
+    # Log attempt
+    log_entry = IPLookupLog(
+        ip_address=req.client.host,
+        action="login_attempt",
+        user_agent=req.headers.get("user-agent", ""),
+        success=success
+    )
+    db.add(log_entry)
+    await db.commit()
+
+    if not success:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": user.email, "role": user.role})
     return {"access_token": access_token, "token_type": "bearer"}
 
 @router.get("/review-queue", dependencies=[Depends(get_current_admin)])
@@ -98,3 +116,26 @@ async def ingest_charley(max_pages: int = 10, db: AsyncSession = Depends(get_db_
     async with CharleyScraper() as scraper:
         stats = await scraper.ingest_pages(db, max_pages=max_pages)
         return {"message": f"Charley Project ingestion triggered", "stats": stats}
+
+@router.get("/security/logs", dependencies=[Depends(require_admin_role("admin"))])
+async def get_security_logs(limit: int = 100, db: AsyncSession = Depends(get_db_session)):
+    """View recent IP activity."""
+    from sqlalchemy import desc
+    result = await db.execute(
+        select(IPLookupLog).order_by(desc(IPLookupLog.timestamp)).limit(limit)
+    )
+    logs = result.scalars().all()
+    return {"logs": [log.__dict__ for log in logs]}
+
+@router.post("/security/ban-ip", dependencies=[Depends(require_admin_role("admin"))])
+async def ban_ip(ip: str, reason: str, expires_at: Optional[str] = None, db: AsyncSession = Depends(get_db_session)):
+    """Ban IP (admin-only)."""
+    from datetime import datetime
+    from auth.ban_list import IPBanList
+    expires = None
+    if expires_at:
+        expires = datetime.fromisoformat(expires_at)
+    ban = IPBanList(ip_address=ip, reason=reason, expires_at=expires)
+    db.add(ban)
+    await db.commit()
+    return {"message": f"IP {ip} banned"}
