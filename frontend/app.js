@@ -376,7 +376,10 @@ if (personsForm) {
       personsStatus.textContent = 'Search failed — try again.';
     }
   });
-  personsForm.dispatchEvent(new Event('submit'));
+  // Only auto-submit if there's a query parameter (e.g., from search from home page)
+  if (params.get('q')) {
+    personsForm.dispatchEvent(new Event('submit'));
+  }
 }
 
 // Locations page
