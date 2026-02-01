@@ -262,23 +262,6 @@ app.include_router(health_router)
 # Serve frontend static files and index
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
-@app.get("/debug-files")
-async def debug_files():
-    """Debug endpoint to inspect server files (temporary)."""
-    import os
-    cwd = os.getcwd()
-    files = os.listdir(cwd)
-    frontend_exists = os.path.exists("frontend")
-    index_exists = os.path.exists(os.path.join("frontend", "index.html"))
-    frontend_files = os.listdir("frontend") if frontend_exists else []
-    return {
-        "cwd": cwd,
-        "files": files,
-        "frontend_exists": frontend_exists,
-        "index_exists": index_exists,
-        "frontend_files": frontend_files,
-    }
-
 @app.get("/")
 async def root():
     return FileResponse("frontend/index.html")

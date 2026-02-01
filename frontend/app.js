@@ -1,35 +1,123 @@
+// Search functionality
 const form = document.getElementById('searchForm');
 const queryInput = document.getElementById('query');
 const resultsEl = document.getElementById('results');
 const statusEl = document.getElementById('status');
 
-form.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const q = queryInput.value.trim();
-  if (!q) {
-    statusEl.textContent = 'Please enter a search term.';
-    return;
-  }
-  statusEl.textContent = 'Searching...';
-  resultsEl.innerHTML = '';
-
-  try {
-    const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
-    if (!res.ok) throw new Error('Search failed');
-    const payload = await res.json();
-    // Support old ({results: []}) and new ([]) response shapes
-    const items = Array.isArray(payload) ? payload : (payload.results || []);
-    if (items.length === 0) {
-      statusEl.textContent = 'No results yet — Try: "Michael Johnson" or "California"';
-      resultsEl.innerHTML = '';
+if (form) {
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const q = queryInput.value.trim();
+    if (!q) {
+      statusEl.textContent = 'Please enter a search term.';
       return;
     }
-    statusEl.textContent = '';
-    resultsEl.innerHTML = items.map(p => renderCard(p)).join('');
+    statusEl.textContent = 'Searching...';
+    resultsEl.innerHTML = '';
+
+    try {
+      const res = await fetch(`/search?q=${encodeURIComponent(q)}`);
+      if (!res.ok) throw new Error('Search failed');
+      const payload = await res.json();
+      const items = Array.isArray(payload) ? payload : (payload.results || []);
+      if (items.length === 0) {
+        statusEl.textContent = 'No results yet — Try: "Michael Johnson" or "California"';
+        resultsEl.innerHTML = '';
+        return;
+      }
+      statusEl.textContent = '';
+      resultsEl.innerHTML = items.map(p => renderCard(p)).join('');
+    } catch (err) {
+      statusEl.textContent = 'Search failed — try again.';
+    }
+  });
+}
+
+// Admin functionality
+let token = null;
+const loginForm = document.getElementById('loginForm');
+const loginStatus = document.getElementById('loginStatus');
+const reviewSection = document.getElementById('reviewSection');
+const profilesEl = document.getElementById('profiles');
+
+if (loginForm) {
+  loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    loginStatus.textContent = 'Signing in...';
+
+    try {
+      const res = await fetch('/admin/login', {
+        method: 'POST', 
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({email, password})
+      });
+      if (!res.ok) throw new Error('Login failed');
+      const data = await res.json();
+      token = data.access_token;
+      loginStatus.textContent = 'Signed in';
+      document.getElementById('loginSection').style.display = 'none';
+      reviewSection.style.display = 'block';
+      await loadUnconfirmed();
+    } catch (err) {
+      loginStatus.textContent = 'Sign-in failed — check credentials';
+    }
+  });
+}
+
+async function loadUnconfirmed(){
+  if (!profilesEl) return;
+  profilesEl.innerHTML = 'Loading...';
+  try {
+    const res = await fetch('/admin/review-profiles', { 
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    if (!res.ok) throw new Error('Failed to load');
+    const data = await res.json();
+    const profiles = data.profiles || [];
+    if (profiles.length === 0) {
+      profilesEl.innerHTML = '<em>No unconfirmed profiles</em>';
+      return;
+    }
+    profilesEl.innerHTML = profiles.map(p => renderRow(p)).join('');
   } catch (err) {
-    statusEl.textContent = 'Search failed — try again.';
+    profilesEl.innerHTML = '<em>Failed to load profiles</em>';
   }
-});
+}
+
+function renderRow(p){
+  return `
+    <div class="card">
+      <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
+      <p>${escapeHtml(p.last_seen_location || '')} — ${escapeHtml(p.author_name || '')}</p>
+      <p><button data-pfif="${encodeURIComponent(p.pfif_id)}" class="approve">Approve</button></p>
+    </div>
+  `;
+}
+
+if (profilesEl) {
+  profilesEl.addEventListener('click', async (e) => {
+    if (!e.target.classList.contains('approve')) return;
+    const pfif = decodeURIComponent(e.target.dataset.pfif);
+    e.target.disabled = true;
+    try {
+      const res = await fetch('/admin/approve-profile', {
+        method: 'POST', 
+        headers: { 
+          'Authorization': 'Bearer ' + token, 
+          'Content-Type': 'application/json' 
+        },
+        body: JSON.stringify({ pfif_id: pfif, confirm: true })
+      });
+      if (!res.ok) throw new Error('Approve failed');
+      await loadUnconfirmed();
+    } catch (err) {
+      if (loginStatus) loginStatus.textContent = 'Approve failed';
+      e.target.disabled = false;
+    }
+  });
+}
 
 function renderCard(p) {
   const name = `${p.given_name || ''} ${p.family_name || ''}`.trim() || 'Unnamed';
@@ -54,9 +142,9 @@ function escapeHtml(s){
     .replace(/'/g,"&#039;");
 }
 
-// Optional: quick search on load if ?q= is present
+// Quick search on load if ?q= is present
 const params = new URLSearchParams(window.location.search);
-if (params.get('q')){
+if (params.get('q') && queryInput){
   queryInput.value = params.get('q');
   form.dispatchEvent(new Event('submit'));
 }
