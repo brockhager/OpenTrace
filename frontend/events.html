@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Events - Opentrace</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">Opentrace</div>
+    <nav class="nav-links">
+      <a href="/">Home</a>
+      <a href="/persons.html">Persons</a>
+      <a href="/locations.html">Locations</a>
+      <a href="/events.html" aria-current="page">Events</a>
+      <a href="/sources.html">Sources</a>
+      <a href="/admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main class="container page-container">
+    <h2>Events</h2>
+    <form id="eventsSearchForm" class="form-grid">
+      <label>
+        Person ID
+        <input id="eventsPersonId" type="text" placeholder="opentrace.org/person/..." />
+      </label>
+      <label>
+        Location ID
+        <input id="eventsLocationId" type="text" placeholder="los-angeles-ca-usa" />
+      </label>
+      <label>
+        Event Type
+        <input id="eventsType" type="text" placeholder="movement, sighting, report" />
+      </label>
+      <label>
+        Start Date
+        <input id="eventsStart" type="date" />
+      </label>
+      <label>
+        End Date
+        <input id="eventsEnd" type="date" />
+      </label>
+      <button id="eventsSearchBtn" type="submit">Search</button>
+    </form>
+
+    <div id="eventsStatus" class="status" aria-live="polite">Showing recent public events.</div>
+    <div id="eventsResults" class="results"></div>
+  </main>
+
+  <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

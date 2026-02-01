@@ -13,6 +13,8 @@ from datetime import datetime
 from uuid import UUID
 
 from db.session import get_db_session
+from auth.deps import require_admin_role
+from auth.models import AdminUser
 from models.source import Source
 from core.logger import logger
 
@@ -216,7 +218,7 @@ async def get_source_by_code(
 async def create_source(
     request: SourceCreateRequest,
     db: AsyncSession = Depends(get_db_session),
-    created_by: str = "system"
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Create a new source.
@@ -464,7 +466,8 @@ async def list_sources(
 async def update_source(
     source_id: str,
     request: SourceUpdateRequest,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Update a source.
@@ -540,7 +543,8 @@ async def update_source(
 async def update_source_health(
     source_id: str,
     request: SourceHealthUpdate,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Update source health status (for automated monitoring).
@@ -619,7 +623,8 @@ async def update_source_health(
 @router.delete("/{source_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_source(
     source_id: str,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Soft delete a source (mark as deprecated).

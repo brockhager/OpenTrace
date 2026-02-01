@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Profile - Opentrace</title>
+  <title>Persons - Opentrace</title>
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
@@ -11,7 +11,7 @@
     <div class="logo">Opentrace</div>
     <nav class="nav-links">
       <a href="/">Home</a>
-      <a href="/persons.html">Persons</a>
+      <a href="/persons.html" aria-current="page">Persons</a>
       <a href="/locations.html">Locations</a>
       <a href="/events.html">Events</a>
       <a href="/sources.html">Sources</a>
@@ -20,9 +20,15 @@
   </header>
 
   <main class="container page-container">
-    <div id="personDetail" class="profile"></div>
-    <div id="personStatus" class="status" aria-live="polite"></div>
-    <a href="/persons.html" class="back">← Back to persons</a>
+    <h2>Persons</h2>
+    <form id="personsSearchForm" class="search-form" action="/search" method="get">
+      <input id="personsQuery" name="q" type="search" placeholder="Search by name" autocomplete="off" />
+      <input id="personsLocation" name="location" type="search" placeholder="Location (optional)" autocomplete="off" />
+      <button type="submit">Search</button>
+    </form>
+
+    <div id="personsStatus" class="status" aria-live="polite">Search confirmed profiles.</div>
+    <div id="personsResults" class="results"></div>
   </main>
 
   <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>

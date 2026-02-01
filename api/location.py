@@ -4,7 +4,7 @@ Location API endpoints for Opentrace
 Provides location-aware search, geocoding, and spatial queries.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, text, func
 from sqlalchemy.orm import selectinload
@@ -16,6 +16,8 @@ from db.session import get_db_session
 from models.person import Person
 from models.location import Location, PersonLocation
 from services.location_resolver import location_resolver
+from auth.deps import require_admin_role
+from auth.models import AdminUser
 
 router = APIRouter(prefix="/api", tags=["location"])
 
@@ -56,6 +58,34 @@ class PersonWithLocation(BaseModel):
     status: str
     primary_source: Optional[str]
     locations: List[dict]
+
+
+class LocationCreateRequest(BaseModel):
+    location_id: str
+    canonical_name: str
+    display_name: str
+    latitude: float
+    longitude: float
+    country_code: str
+    country_name: str
+    location_type: str
+    admin1_name: Optional[str] = None
+    locality: Optional[str] = None
+    coordinate_precision: Optional[str] = "approximate"
+
+
+class LocationUpdateRequest(BaseModel):
+    display_name: Optional[str] = None
+    canonical_name: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    country_code: Optional[str] = None
+    country_name: Optional[str] = None
+    admin1_name: Optional[str] = None
+    locality: Optional[str] = None
+    location_type: Optional[str] = None
+    coordinate_precision: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 @router.post("/resolve-location", response_model=LocationResolveResponse)
@@ -240,6 +270,76 @@ async def search_locations(
         raise HTTPException(status_code=500, detail=f"Location search failed: {str(e)}")
 
 
+@router.get("/locations", response_model=List[LocationResolveResponse])
+async def list_locations(
+    q: Optional[str] = Query(None, description="Optional search query"),
+    limit: int = Query(25, description="Maximum results"),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """List active locations with optional search query."""
+    if db is None:
+        return []
+    try:
+        query = select(Location).where(Location.is_active == True)
+        if q:
+            query = query.where(
+                (Location.display_name.ilike(f"%{q}%")) |
+                (Location.canonical_name.ilike(f"%{q}%")) |
+                (Location.locality.ilike(f"%{q}%")) |
+                (Location.admin1_name.ilike(f"%{q}%"))
+            )
+        query = query.order_by(Location.confidence_score.desc()).limit(limit)
+        result = await db.execute(query)
+        locations = result.scalars().all()
+        return [
+            LocationResolveResponse(
+                location_id=loc.location_id,
+                display_name=loc.display_name,
+                canonical_name=loc.canonical_name,
+                latitude=float(loc.latitude),
+                longitude=float(loc.longitude),
+                coordinate_precision=loc.coordinate_precision,
+                country_code=loc.country_code,
+                country_name=loc.country_name,
+                admin1_name=loc.admin1_name,
+                locality=loc.locality,
+                location_type=loc.location_type,
+                confidence_score=float(loc.confidence_score)
+            )
+            for loc in locations
+        ]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to list locations: {str(e)}")
+
+
+@router.get("/locations/{location_id}", response_model=LocationResolveResponse)
+async def get_location(
+    location_id: str,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """Get a single location by ID."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    result = await db.execute(select(Location).where(Location.location_id == location_id))
+    location = result.scalar_one_or_none()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    return LocationResolveResponse(
+        location_id=location.location_id,
+        display_name=location.display_name,
+        canonical_name=location.canonical_name,
+        latitude=float(location.latitude),
+        longitude=float(location.longitude),
+        coordinate_precision=location.coordinate_precision,
+        country_code=location.country_code,
+        country_name=location.country_name,
+        admin1_name=location.admin1_name,
+        locality=location.locality,
+        location_type=location.location_type,
+        confidence_score=float(location.confidence_score)
+    )
+
+
 @router.get("/persons/{pfif_id}/locations")
 async def get_person_locations(
     pfif_id: str,
@@ -287,7 +387,8 @@ async def get_person_locations(
 async def add_person_location(
     pfif_id: str,
     location_data: dict,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Add a location event for a person.
@@ -338,6 +439,65 @@ async def add_person_location(
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to add location: {str(e)}")
+
+
+@router.post("/locations", status_code=status.HTTP_201_CREATED)
+async def create_location(
+    request: LocationCreateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
+):
+    """Create a new location (admin-only)."""
+    location = Location(
+        location_id=request.location_id,
+        canonical_name=request.canonical_name,
+        display_name=request.display_name,
+        latitude=request.latitude,
+        longitude=request.longitude,
+        country_code=request.country_code,
+        country_name=request.country_name,
+        admin1_name=request.admin1_name,
+        locality=request.locality,
+        location_type=request.location_type,
+        coordinate_precision=request.coordinate_precision
+    )
+    db.add(location)
+    await db.commit()
+    return {"location_id": request.location_id}
+
+
+@router.patch("/locations/{location_id}")
+async def update_location(
+    location_id: str,
+    request: LocationUpdateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
+):
+    """Update an existing location (admin-only)."""
+    result = await db.execute(select(Location).where(Location.location_id == location_id))
+    location = result.scalar_one_or_none()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    for key, value in request.model_dump(exclude_unset=True).items():
+        setattr(location, key, value)
+    await db.commit()
+    return {"message": "Location updated"}
+
+
+@router.delete("/locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_location(
+    location_id: str,
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
+):
+    """Soft delete a location (admin-only)."""
+    result = await db.execute(select(Location).where(Location.location_id == location_id))
+    location = result.scalar_one_or_none()
+    if not location:
+        raise HTTPException(status_code=404, detail="Location not found")
+    location.is_active = False
+    await db.commit()
+    return None
 
 
 @router.get("/reverse-geocode", response_model=LocationResolveResponse)

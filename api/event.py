@@ -14,6 +14,8 @@ from datetime import datetime
 from uuid import UUID
 
 from db.session import get_db_session
+from auth.deps import require_admin_role
+from auth.models import AdminUser
 from models.event import Event
 from models.person import Person
 from models.location import Location
@@ -99,7 +101,7 @@ class EventSearchParams(BaseModel):
 async def create_event(
     request: EventCreateRequest,
     db: AsyncSession = Depends(get_db_session),
-    created_by: str = "system"
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Create a new event.
@@ -155,7 +157,7 @@ async def create_event(
             source_url=request.source_url,
             source_confidence=request.confidence_score,
             is_public=request.is_public == "public",  # Convert string to boolean
-            created_by=created_by
+            created_by=admin.email
         )
         
         db.add(event)
@@ -507,7 +509,8 @@ async def get_location_events(
 @router.delete("/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_event(
     event_id: str,
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Delete an event (soft delete only for audit integrity).
@@ -564,7 +567,8 @@ async def delete_event(
 async def verify_event(
     event_id: str,
     verified_status: str = Query(..., description="New verification status: verified, disputed, pending, unverified"),
-    db: AsyncSession = Depends(get_db_session)
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """
     Update the verification status of an event.

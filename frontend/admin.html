@@ -7,8 +7,16 @@
   <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-  <main class="container">
+  <main class="container page-container">
     <div class="logo">Opentrace</div>
+    <nav class="nav-links">
+      <a href="/">Home</a>
+      <a href="/persons.html">Persons</a>
+      <a href="/locations.html">Locations</a>
+      <a href="/events.html">Events</a>
+      <a href="/sources.html">Sources</a>
+      <a href="/admin.html" aria-current="page">Admin</a>
+    </nav>
     
     <div id="loginSection">
       <h2>Moderator Login</h2>
@@ -23,6 +31,257 @@
     <section id="reviewSection" style="display:none;">
       <h3>Unconfirmed Profiles</h3>
       <div id="profiles"></div>
+
+      <section class="admin-section">
+        <h3>Person Locations (Add)</h3>
+        <form id="personLocationForm" class="form-grid">
+          <label>Person PFIF ID
+            <input id="personLocationPfif" type="text" placeholder="opentrace.org/person/..." required />
+          </label>
+          <label>Location Text
+            <input id="personLocationText" type="text" placeholder="Venice Beach, Los Angeles" required />
+          </label>
+          <label>Event Type
+            <input id="personLocationType" type="text" placeholder="sighting" />
+          </label>
+          <label>Event Date
+            <input id="personLocationDate" type="datetime-local" />
+          </label>
+          <label>Event Description
+            <input id="personLocationDesc" type="text" placeholder="Seen near the pier" />
+          </label>
+          <label>Source URL
+            <input id="personLocationSource" type="url" placeholder="https://example.com/report" />
+          </label>
+          <button type="submit">Add Location</button>
+        </form>
+        <div id="personLocationStatus" class="status"></div>
+      </section>
+
+      <section class="admin-section">
+        <h3>Persons (Create / Update / Delete)</h3>
+        <form id="personCreateForm" class="form-grid">
+          <label>PFIF ID
+            <input id="personPfif" type="text" placeholder="opentrace.org/person/..." required />
+          </label>
+          <label>Given Name
+            <input id="personGiven" type="text" />
+          </label>
+          <label>Family Name
+            <input id="personFamily" type="text" />
+          </label>
+          <label>Age at Disappearance
+            <input id="personAge" type="number" min="0" />
+          </label>
+          <label>Sex
+            <input id="personSex" type="text" placeholder="Male, Female, Unknown" />
+          </label>
+          <label>Status
+            <input id="personStatus" type="text" placeholder="missing" />
+          </label>
+          <label>Date Last Seen
+            <input id="personLastSeen" type="date" />
+          </label>
+          <label>Primary Source
+            <input id="personSource" type="text" placeholder="namus" />
+          </label>
+          <label>Source URL
+            <input id="personSourceUrl" type="url" />
+          </label>
+          <button type="submit">Create Person</button>
+        </form>
+
+        <form id="personUpdateForm" class="form-grid">
+          <label>PFIF ID
+            <input id="personUpdatePfif" type="text" required />
+          </label>
+          <label>Given Name
+            <input id="personUpdateGiven" type="text" />
+          </label>
+          <label>Family Name
+            <input id="personUpdateFamily" type="text" />
+          </label>
+          <label>Status
+            <input id="personUpdateStatus" type="text" />
+          </label>
+          <label>Confirmed
+            <select id="personUpdateConfirmed">
+              <option value="">No change</option>
+              <option value="true">Confirmed</option>
+              <option value="false">Unconfirmed</option>
+            </select>
+          </label>
+          <button type="submit">Update Person</button>
+        </form>
+
+        <form id="personDeleteForm" class="form-grid">
+          <label>PFIF ID
+            <input id="personDeletePfif" type="text" required />
+          </label>
+          <button type="submit" class="danger">Delete Person</button>
+        </form>
+        <div id="personStatusMsg" class="status"></div>
+      </section>
+
+      <section class="admin-section">
+        <h3>Locations (Create / Update / Delete)</h3>
+        <form id="locationCreateForm" class="form-grid">
+          <label>Location ID
+            <input id="locationId" type="text" placeholder="los-angeles-ca-usa" required />
+          </label>
+          <label>Display Name
+            <input id="locationDisplay" type="text" required />
+          </label>
+          <label>Canonical Name
+            <input id="locationCanonical" type="text" required />
+          </label>
+          <label>Latitude
+            <input id="locationLat" type="number" step="0.000001" required />
+          </label>
+          <label>Longitude
+            <input id="locationLng" type="number" step="0.000001" required />
+          </label>
+          <label>Country Code
+            <input id="locationCountryCode" type="text" placeholder="US" required />
+          </label>
+          <label>Country Name
+            <input id="locationCountryName" type="text" placeholder="United States" required />
+          </label>
+          <label>Admin1 Name
+            <input id="locationAdmin1" type="text" placeholder="California" />
+          </label>
+          <label>Locality
+            <input id="locationLocality" type="text" placeholder="Los Angeles" />
+          </label>
+          <label>Location Type
+            <input id="locationType" type="text" placeholder="city" required />
+          </label>
+          <button type="submit">Create Location</button>
+        </form>
+
+        <form id="locationUpdateForm" class="form-grid">
+          <label>Location ID
+            <input id="locationUpdateId" type="text" required />
+          </label>
+          <label>Display Name
+            <input id="locationUpdateDisplay" type="text" />
+          </label>
+          <label>Canonical Name
+            <input id="locationUpdateCanonical" type="text" />
+          </label>
+          <label>Latitude
+            <input id="locationUpdateLat" type="number" step="0.000001" />
+          </label>
+          <label>Longitude
+            <input id="locationUpdateLng" type="number" step="0.000001" />
+          </label>
+          <label>Active
+            <select id="locationUpdateActive">
+              <option value="">No change</option>
+              <option value="true">Active</option>
+              <option value="false">Inactive</option>
+            </select>
+          </label>
+          <button type="submit">Update Location</button>
+        </form>
+
+        <form id="locationDeleteForm" class="form-grid">
+          <label>Location ID
+            <input id="locationDeleteId" type="text" required />
+          </label>
+          <button type="submit" class="danger">Delete Location</button>
+        </form>
+        <div id="locationStatusMsg" class="status"></div>
+      </section>
+
+      <section class="admin-section">
+        <h3>Events (Create / Delete)</h3>
+        <form id="eventCreateForm" class="form-grid">
+          <label>Name
+            <input id="eventName" type="text" placeholder="Departure" />
+          </label>
+          <label>Event Type
+            <input id="eventType" type="text" placeholder="movement" required />
+          </label>
+          <label>Event Timestamp
+            <input id="eventTimestamp" type="datetime-local" required />
+          </label>
+          <label>Person ID
+            <input id="eventPersonId" type="text" placeholder="opentrace.org/person/..." />
+          </label>
+          <label>Location ID
+            <input id="eventLocationId" type="text" placeholder="los-angeles-ca-usa" />
+          </label>
+          <label>Source URL
+            <input id="eventSourceUrl" type="url" placeholder="https://example.com" />
+          </label>
+          <label>Confidence
+            <select id="eventConfidence">
+              <option value="high">High</option>
+              <option value="medium" selected>Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </label>
+          <label>Visibility
+            <select id="eventVisibility">
+              <option value="public" selected>Public</option>
+              <option value="restricted">Restricted</option>
+              <option value="private">Private</option>
+            </select>
+          </label>
+          <button type="submit">Create Event</button>
+        </form>
+
+        <form id="eventDeleteForm" class="form-grid">
+          <label>Event ID
+            <input id="eventDeleteId" type="text" placeholder="550e8400-e29b-41d4-a716-446655440000" required />
+          </label>
+          <button type="submit" class="danger">Delete Event</button>
+        </form>
+        <div id="eventStatus" class="status"></div>
+      </section>
+
+      <section class="admin-section">
+        <h3>Sources (Create / Delete)</h3>
+        <form id="sourceCreateForm" class="form-grid">
+          <label>Name
+            <input id="sourceName" type="text" required />
+          </label>
+          <label>Code
+            <input id="sourceCode" type="text" required />
+          </label>
+          <label>Type
+            <input id="sourceType" type="text" placeholder="api" required />
+          </label>
+          <label>Category
+            <input id="sourceCategory" type="text" placeholder="official" required />
+          </label>
+          <label>Source URL
+            <input id="sourceUrl" type="url" placeholder="https://example.com" />
+          </label>
+          <label>Trust Tier
+            <input id="sourceTrust" type="text" placeholder="verified" />
+          </label>
+          <label>Verification
+            <input id="sourceVerification" type="text" placeholder="verified" />
+          </label>
+          <label>Reliability (0-1)
+            <input id="sourceReliability" type="number" step="0.01" min="0" max="1" value="0.7" />
+          </label>
+          <label>Data Types (comma)
+            <input id="sourceDataTypes" type="text" placeholder="person, location" />
+          </label>
+          <button type="submit">Create Source</button>
+        </form>
+
+        <form id="sourceDeleteForm" class="form-grid">
+          <label>Source ID
+            <input id="sourceDeleteId" type="text" placeholder="UUID" required />
+          </label>
+          <button type="submit" class="danger">Delete Source</button>
+        </form>
+        <div id="sourceStatus" class="status"></div>
+      </section>
     </section>
   </main>
 

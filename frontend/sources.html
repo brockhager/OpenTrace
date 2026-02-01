@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sources - Opentrace</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">Opentrace</div>
+    <nav class="nav-links">
+      <a href="/">Home</a>
+      <a href="/persons.html">Persons</a>
+      <a href="/locations.html">Locations</a>
+      <a href="/events.html">Events</a>
+      <a href="/sources.html" aria-current="page">Sources</a>
+      <a href="/admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main class="container page-container">
+    <h2>Sources</h2>
+    <form id="sourcesSearchForm" class="form-grid">
+      <label>
+        Source Type
+        <input id="sourcesType" type="text" placeholder="api, scraper, import" />
+      </label>
+      <label>
+        Category
+        <input id="sourcesCategory" type="text" placeholder="official, community" />
+      </label>
+      <label>
+        Trust Tier
+        <input id="sourcesTrust" type="text" placeholder="verified, standard" />
+      </label>
+      <label>
+        Verification
+        <input id="sourcesVerification" type="text" placeholder="verified, pending" />
+      </label>
+      <label>
+        Active
+        <select id="sourcesActive">
+          <option value="">Any</option>
+          <option value="true">Active</option>
+          <option value="false">Inactive</option>
+        </select>
+      </label>
+      <button id="sourcesSearchBtn" type="submit">Search</button>
+    </form>
+
+    <div id="sourcesStatus" class="status" aria-live="polite">Showing active sources.</div>
+    <div id="sourcesResults" class="results"></div>
+  </main>
+
+  <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
+  <script src="/static/app.js"></script>
+</body>
+</html>

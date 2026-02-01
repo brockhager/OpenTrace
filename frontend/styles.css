@@ -28,6 +28,39 @@ body {
   text-align: center;
 }
 
+.page-container {
+  margin: 8vh auto 12vh;
+  text-align: left;
+}
+
+.site-header {
+  max-width: var(--max-width);
+  margin: 32px auto 0;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 14px;
+}
+
+.nav-links a {
+  color: var(--accent);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.nav-links a[aria-current="page"] {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
 /* Logo styling */
 .logo {
   font-size: 28px;
@@ -42,6 +75,44 @@ body {
   gap: 8px;
   justify-content: center;
   margin-bottom: 24px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.form-grid input,
+.form-grid select {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 14px;
+}
+
+.form-grid button {
+  align-self: end;
+  padding: 12px 16px;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.form-grid button.danger {
+  background: #ea4335;
 }
 
 .search-form input[type=search] {
@@ -247,6 +318,7 @@ body {
   border-radius: 12px;
   background: var(--background);
   transition: box-shadow 0.2s;
+  position: relative;
 }
 
 .card:hover {
@@ -286,6 +358,32 @@ body {
 
 .card a:hover {
   text-decoration: underline;
+}
+
+.card-id {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  background: #f1f3f4;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  max-width: 70%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.detail-section {
+  margin-top: 24px;
+}
+
+.admin-section {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
 }
 
 /* Approve button */
@@ -345,6 +443,11 @@ h3 {
     margin: 10vh auto;
     padding: 0 16px;
   }
+
+  .site-header {
+    margin-top: 16px;
+    padding: 0 16px;
+  }
   
   .search-form {
     flex-direction: column;
@@ -353,6 +456,10 @@ h3 {
   
   .search-form button {
     width: 100%;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
   }
   
   .location-input-group {

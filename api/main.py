@@ -343,6 +343,10 @@ app.include_router(event_router)
 from api.source import router as source_router
 app.include_router(source_router)
 
+# Include person router
+from api.person import router as person_router
+app.include_router(person_router)
+
 # Serve frontend static files and index
 app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
@@ -357,6 +361,22 @@ async def admin_page():
 @app.get("/profile.html")
 async def profile_page():
     return FileResponse("frontend/profile.html")
+
+@app.get("/persons.html")
+async def persons_page():
+    return FileResponse("frontend/persons.html")
+
+@app.get("/locations.html")
+async def locations_page():
+    return FileResponse("frontend/locations.html")
+
+@app.get("/events.html")
+async def events_page():
+    return FileResponse("frontend/events.html")
+
+@app.get("/sources.html")
+async def sources_page():
+    return FileResponse("frontend/sources.html")
 
 
 if __name__ == "__main__":
