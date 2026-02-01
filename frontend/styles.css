@@ -411,6 +411,14 @@ body {
   text-align: left;
 }
 
+/* Entity grid used in admin entity management */
+.entity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  align-items: start;
+}
+
 /* Cards */
 .card {
   border: 1px solid var(--border);
