@@ -644,6 +644,54 @@ if (sourceDeleteForm) {
   });
 }
 
+// NamUs scraper admin actions
+const namusScrapeForm = document.getElementById('namusScrapeForm');
+const namusScanForm = document.getElementById('namusScanForm');
+const namusStatus = document.getElementById('namusStatus');
+
+if (namusScrapeForm) {
+  namusScrapeForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    namusStatus.textContent = 'Scraping case...';
+    try {
+      const caseId = document.getElementById('namusCaseId').value.trim();
+      const payload = { case_id: caseId };
+      const res = await fetchJson('/admin/scrape/namus', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(payload)
+      });
+      namusStatus.textContent = res.found
+        ? `Found: ${res.person?.pfif_id || caseId}`
+        : res.message;
+    } catch (err) {
+      namusStatus.textContent = 'Scrape failed.';
+    }
+  });
+}
+
+if (namusScanForm) {
+  namusScanForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    namusStatus.textContent = 'Scanning...';
+    try {
+      const startId = document.getElementById('namusStartId').value.trim();
+      const maxChecks = parseInt(document.getElementById('namusMaxChecks').value, 10) || 5;
+      const payload = { start_case_id: startId, max_checks: maxChecks };
+      const res = await fetchJson('/admin/scrape/namus-until-found', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(payload)
+      });
+      namusStatus.textContent = res.found
+        ? `Found: ${res.case_id}`
+        : res.message;
+    } catch (err) {
+      namusStatus.textContent = 'Scan failed.';
+    }
+  });
+}
+
 // Person CRUD
 const personCreateForm = document.getElementById('personCreateForm');
 const personUpdateForm = document.getElementById('personUpdateForm');

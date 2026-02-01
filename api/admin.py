@@ -1,4 +1,5 @@
 # api/admin.py
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
@@ -16,6 +17,8 @@ from auth.deps import get_current_admin, require_admin_role
 from core.logger import logger
 from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
 from models.person import Person
+from scrapers.namus_scraper import NamUsScraper
+from db.session import async_session
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -32,6 +35,13 @@ class ApprovePersonRequest(BaseModel):
     pfif_id: str
     confirm: bool = True
     justification: Optional[str] = None
+
+class NamUsScrapeRequest(BaseModel):
+    case_id: str
+
+class NamUsScanRequest(BaseModel):
+    start_case_id: str
+    max_checks: int = 5
 
 @router.post("/login")
 async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(get_db_session)):
@@ -140,11 +150,74 @@ async def takedown_profile(pfif_id: str, user: AdminUser = Depends(get_current_a
     await db.commit()
     return {"message": f"Profile {pfif_id} removed"}
 
+def _normalize_namus_case_id(case_id: str) -> str:
+    raw = case_id.strip()
+    if raw.lower().startswith("mp"):
+        return f"MP{raw[2:]}"
+    if raw.isdigit():
+        return f"MP{raw}"
+    return raw
+
 @router.post("/scrape/namus", dependencies=[Depends(require_admin_role("admin"))])
-async def trigger_namus_scrape(case_id: str):
-    """Trigger manual NamUs scrape (for testing)."""
-    # Mock - in real implementation, call scraper
-    return {"message": f"Scrape triggered for NamUs case {case_id}"}
+async def trigger_namus_scrape(request: NamUsScrapeRequest, db: AsyncSession = Depends(get_db_session)):
+    """Trigger manual NamUs scrape for a single case ID."""
+    case_id = _normalize_namus_case_id(request.case_id)
+    async with NamUsScraper() as scraper:
+        person_data = await scraper.scrape_case(case_id)
+        if not person_data:
+            return {"message": f"No public data found for NamUs case {case_id}", "found": False}
+
+        if async_session is None or db is None:
+            return {"message": f"Scrape completed for NamUs case {case_id}", "found": True, "person": person_data}
+
+        created = await scraper.save_person(person_data)
+        return {
+            "message": f"Scrape completed for NamUs case {case_id}",
+            "found": True,
+            "created": created,
+            "person": person_data
+        }
+
+@router.post("/scrape/namus-until-found", dependencies=[Depends(require_admin_role("admin"))])
+async def scan_namus_until_found(request: NamUsScanRequest, db: AsyncSession = Depends(get_db_session)):
+    """Scan NamUs case IDs starting at the provided ID until a public record is found.
+
+    This is bounded by max_checks to avoid long-running requests.
+    """
+    start_id = _normalize_namus_case_id(request.start_case_id)
+    if not start_id.lower().startswith("mp") or not start_id[2:].isdigit():
+        raise HTTPException(status_code=400, detail="start_case_id must be numeric or start with MP")
+
+    max_checks = max(1, min(request.max_checks, 20))
+    start_num = int(start_id[2:])
+
+    async with NamUsScraper() as scraper:
+        for offset in range(max_checks):
+            case_num = start_num + offset
+            case_id = f"MP{case_num}"
+            person_data = await scraper.scrape_case(case_id)
+            if not person_data:
+                await asyncio.sleep(scraper.RATE_LIMIT_DELAY)
+                continue
+
+            if async_session is None or db is None:
+                return {
+                    "message": f"Found public record for NamUs case {case_id}",
+                    "found": True,
+                    "case_id": case_id,
+                    "person": person_data
+                }
+
+            created = await scraper.save_person(person_data)
+            return {
+                "message": f"Found public record for NamUs case {case_id}",
+                "found": True,
+                "created": created,
+                "case_id": case_id,
+                "person": person_data
+            }
+
+    return {"message": "No public record found in scan window", "found": False}
 
 @router.post("/ingest/opensanctions", dependencies=[Depends(require_admin_role("admin"))])
 async def ingest_opensanctions(batch_size: int = 10, db: AsyncSession = Depends(get_db_session)):

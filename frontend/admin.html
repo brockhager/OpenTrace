@@ -33,6 +33,27 @@
       <div id="profiles"></div>
 
       <section class="admin-section">
+        <h3>NamUs Scraper</h3>
+        <form id="namusScrapeForm" class="form-grid">
+          <label>Case ID
+            <input id="namusCaseId" type="text" placeholder="MP12345" required />
+          </label>
+          <button type="submit">Scrape Case</button>
+        </form>
+
+        <form id="namusScanForm" class="form-grid">
+          <label>Start Case ID
+            <input id="namusStartId" type="text" placeholder="MP12345" required />
+          </label>
+          <label>Max Checks (1-20)
+            <input id="namusMaxChecks" type="number" min="1" max="20" value="5" required />
+          </label>
+          <button type="submit">Scan Until Found</button>
+        </form>
+        <div id="namusStatus" class="status"></div>
+      </section>
+
+      <section class="admin-section">
         <h3>Person Locations (Add)</h3>
         <form id="personLocationForm" class="form-grid">
           <label>Person PFIF ID
