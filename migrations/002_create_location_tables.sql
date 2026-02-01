@@ -2,9 +2,17 @@
 -- This establishes the canonical Location entity and Person-Location relationships
 -- Run this after Phase 13 deployment: psql -f migrations/002_create_location_tables.sql
 
--- Enable PostGIS extension for spatial indexing
-CREATE EXTENSION IF NOT EXISTS postgis;
-CREATE EXTENSION IF NOT EXISTS postgis_topology;
+-- Enable PostGIS extension for spatial indexing (conditionally)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name='postgis') THEN
+    EXECUTE 'CREATE EXTENSION IF NOT EXISTS postgis';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_available_extensions WHERE name='postgis_topology') THEN
+    EXECUTE 'CREATE EXTENSION IF NOT EXISTS postgis_topology';
+  END IF;
+END;
+$$;
 
 -- Create the canonical Location table
 CREATE TABLE location (
@@ -91,10 +99,18 @@ CREATE INDEX idx_location_type ON location(location_type);
 CREATE INDEX idx_location_confidence ON location(confidence_score);
 CREATE INDEX idx_location_active ON location(is_active);
 
--- Create spatial index for geographic queries
-CREATE INDEX idx_location_spatial ON location USING GIST (
-    ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)
-);
+-- Create spatial index for geographic queries (only if PostGIS is installed)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_extension WHERE extname='postgis') THEN
+    EXECUTE $$
+      CREATE INDEX idx_location_spatial ON location USING GIST (
+        ST_SetSRID(ST_MakePoint(longitude::double precision, latitude::double precision), 4326)
+      );
+    $$;
+  END IF;
+END;
+$$;
 
 -- Create indexes for PersonLocation table
 CREATE INDEX idx_person_location_pfif ON person_location(pfif_id);
