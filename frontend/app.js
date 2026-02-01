@@ -877,7 +877,9 @@ async function loadPersonDetail() {
     const person = personPayload.person || {};
     
     // Show name and ID in header
-    const personName = `${person.given_name || ''} ${person.family_name || ''}`.trim() || 'Unnamed Person';
+    let personName = `${person.given_name || ''} ${person.family_name || ''}`.trim() || 'Unnamed Person';
+    // Normalize whitespace and remove zero-width characters so letters don't stack vertically
+    personName = personName.replace(/\u200B/g, '').replace(/\s+/g, ' ').trim();
     if (personNameEl) {
       personNameEl.textContent = personName;
     }

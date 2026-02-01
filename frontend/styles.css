@@ -516,6 +516,16 @@ body {
   margin-top: 24px;
 }
 
+/* Force normal horizontal layout for profile headers to avoid vertical letter stacking */
+#personName, #locationName, #eventName {
+  word-break: normal;
+  white-space: normal;
+  overflow-wrap: normal;
+  writing-mode: horizontal-tb;
+  text-orientation: mixed;
+  letter-spacing: normal;
+}
+
 .admin-section {
   margin-top: 32px;
   padding-top: 16px;
