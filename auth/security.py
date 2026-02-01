@@ -6,9 +6,10 @@ from typing import Optional
 
 from passlib.context import CryptContext
 from jose import jwt, JWTError
+from core.config import settings
 
-# Config (move to env vars in production)
-SECRET_KEY = os.getenv("SECRET_KEY", secrets.token_urlsafe(32))
+# Config from centralized settings
+SECRET_KEY = settings.JWT_SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 

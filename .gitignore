@@ -1,6 +1,9 @@
 # Admin bootstrap scripts - NEVER commit
 create_admin.py
 
+# Environment variables - NEVER commit
+.env
+
 # Python
 __pycache__/
 *.pyc

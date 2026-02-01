@@ -1,0 +1,13 @@
+# .railway.toml
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+startCommand = "uvicorn api.main:app --host 0.0.0.0 --port $PORT --workers 1"
+
+[environments]
+[environments.production]
+DATABASE_URL = "RAILWAY_DATABASE_URL"
+JWT_SECRET_KEY = "RAILWAY_JWT_SECRET_KEY"

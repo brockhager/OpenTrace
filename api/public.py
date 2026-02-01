@@ -10,6 +10,7 @@ from db.session import get_db_session
 from api.models import PersonProfile
 from auth.rate_limit import check_rate_limit
 from auth.ip_log import IPLookupLog
+from core.logger import logger
 
 router = APIRouter(prefix="", tags=["public"])
 
@@ -145,6 +146,17 @@ async def search_profiles(
     db.add(log_entry)
     await db.commit()
 
+    logger.info("Public search performed", extra={
+        "ip": ip,
+        "user_agent": user_agent,
+        "query": q,
+        "location": location,
+        "status": status,
+        "source": source,
+        "results_count": len(public_profiles),
+        "action": "public_search"
+    })
+
     return {"results": public_profiles}
 
 @router.get("/profile/{pfif_id}")
@@ -202,5 +214,12 @@ async def get_profile(pfif_id: str, request: Request = None, db: AsyncSession = 
     )
     db.add(log_entry)
     await db.commit()
+
+    logger.info("Profile viewed", extra={
+        "ip": ip,
+        "user_agent": user_agent,
+        "pfif_id": pfif_id,
+        "action": "profile_view"
+    })
 
     return {"profile": public_profile, "source_attribution": source_detail}

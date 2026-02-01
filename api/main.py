@@ -6,8 +6,58 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update, delete
 from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
 import os
+from contextlib import asynccontextmanager
 
-app = FastAPI(title="Opentrace API", version="0.1.0")
+# Setup structured logging
+from core.logger import logger
+from core.config import settings
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup validation
+    logger.info("Starting Opentrace API", extra={"action": "startup"})
+    
+    # Validate configuration
+    try:
+        settings.validate()
+        logger.info("Configuration validated successfully", extra={"action": "config_validation"})
+    except ValueError as e:
+        logger.error(f"Configuration error: {e}", extra={"error": str(e), "action": "config_validation"})
+        raise SystemExit(1)
+    
+    # Test database connection
+    try:
+        from db.session import async_session
+        async with async_session() as db:
+            # Check critical tables exist
+            tables = ["person_profile", "admin_user"]
+            for table in tables:
+                result = await db.execute(f"SELECT 1 FROM {table} LIMIT 1")
+                if not result:
+                    logger.warning(f"Table {table} may not exist or is empty", extra={"table": table})
+            logger.info("Database connectivity verified", extra={"action": "db_check"})
+    except Exception as e:
+        logger.error("Database connection failed", extra={"error": str(e)})
+        raise
+    
+    # Check if admin user exists
+    try:
+        from db.session import async_session
+        from auth.models import AdminUser
+        async with async_session() as db:
+            result = await db.execute(select(AdminUser).limit(1))
+            admin_exists = result.scalar_one_or_none() is not None
+            if not admin_exists:
+                logger.warning("No admin user found - create one via /admin/setup or manual insertion", extra={"action": "admin_check"})
+    except Exception as e:
+        logger.warning("Could not check admin user existence", extra={"error": str(e)})
+    
+    yield
+    
+    # Shutdown
+    logger.info("Shutting down Opentrace API", extra={"action": "shutdown"})
+
+app = FastAPI(title="Opentrace API", version="0.1.0", lifespan=lifespan)
 
 # Security middleware
 @app.middleware("http")
@@ -27,6 +77,12 @@ async def security_middleware(request: Request, call_next):
         )
         ban = result.scalar_one_or_none()
         if ban and (ban.expires_at is None or ban.expires_at > datetime.utcnow()):
+            logger.warning("IP banned - request blocked", extra={
+                "ip": ip,
+                "user_agent": request.headers.get("user-agent", ""),
+                "path": request.url.path,
+                "action": "ip_ban_blocked"
+            })
             return JSONResponse(status_code=403, content={"detail": "IP banned"})
 
     response = await call_next(request)
@@ -191,6 +247,10 @@ app.include_router(admin_router)
 # Include public router
 from api.public import router as public_router
 app.include_router(public_router)
+
+# Include health router
+from api.health import router as health_router
+app.include_router(health_router)
 
 
 if __name__ == "__main__":

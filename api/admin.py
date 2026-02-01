@@ -13,6 +13,7 @@ from db.session import get_db_session
 from auth.security import create_access_token, verify_password
 from auth.models import AdminUser
 from auth.deps import get_current_admin, require_admin_role
+from core.logger import logger
 from api.models import PersonProfile, IntelItem, ProfileLink, AuditLog
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -46,6 +47,14 @@ async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(
     )
     db.add(log_entry)
     await db.commit()
+
+    logger.info("Admin login attempt", extra={
+        "ip": req.client.host if req.client else "unknown",
+        "user_agent": req.headers.get("user-agent", ""),
+        "email": request.email,
+        "success": success,
+        "action": "admin_login"
+    })
 
     if not success:
         raise HTTPException(
