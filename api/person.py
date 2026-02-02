@@ -125,17 +125,19 @@ async def create_person(
         pass
 
     # Validate status against allowed set to avoid DB check constraint failures
-    allowed_statuses = {"missing", "unidentified", "found"}
+    allowed_statuses = {"missing", "unidentified", "found", "died", "other"}
     if request.status and request.status not in allowed_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status '{request.status}'. Allowed: {', '.join(sorted(allowed_statuses))}")
     try:
         person = Person(**request.model_dump())
         db.add(person)
         await db.commit()
+        logger.info("Person created", extra={"pfif_id": person.pfif_id, "given_name": person.given_name, "family_name": person.family_name})
         return {"pfif_id": person.pfif_id}
     except IntegrityError as ie:
         await db.rollback()
         # Likely duplicate primary key
+        logger.warning("Person create conflict", extra={"pfif_id": request.pfif_id})
         raise HTTPException(status_code=409, detail="Person already exists")
     except Exception as e:
         await db.rollback()

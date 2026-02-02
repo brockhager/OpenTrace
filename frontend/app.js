@@ -2037,12 +2037,18 @@ if (personCreateForm) {
         primary_source: primarySource,
         source_url: document.getElementById('personSourceUrl').value.trim() || null
       };
-      await fetchJson('/api/persons', {
+      const res = await fetchJson('/api/persons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
       });
-      personStatusMsg.textContent = 'Person created.';
+      // Show created PFIF ID for confirmation
+      if (res && res.pfif_id) {
+        personStatusMsg.textContent = `Person created: ${res.pfif_id}`;
+      } else {
+        personStatusMsg.textContent = 'Person created.';
+      }
+      console.debug('Create person response:', res);
       personCreateForm.reset();
     } catch (err) {
       console.error('Failed to create person:', err);
