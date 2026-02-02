@@ -2025,14 +2025,26 @@ if (personCreateForm) {
       const givenName = document.getElementById('personGiven').value.trim() || null;
       const familyName = document.getElementById('personFamily').value.trim() || null;
       const primarySource = document.getElementById('personSource').value.trim() || 'manual';
-      
+
+      // Client-side normalization for status to prevent server check failures if server is behind
+      function normalizeStatusClient(s) {
+        if (!s && s !== '') return s;
+        const ss = String(s).trim().toLowerCase();
+        const mapToDied = new Set(['died','deceased','dead','passed','passed away']);
+        if (['missing','unidentified','found','died','other'].includes(ss)) return ss;
+        if (mapToDied.has(ss)) return 'died';
+        return 'other';
+      }
+      const rawStatus = document.getElementById('personStatus').value || 'missing';
+      const normalizedStatus = normalizeStatusClient(rawStatus);
+
       const payload = {
         pfif_id: generatePersonId(givenName, familyName, primarySource),
         given_name: givenName,
         family_name: familyName,
         age_at_disappearance: parseInt(document.getElementById('personAge').value || '', 10) || null,
         sex: document.getElementById('personSex').value.trim() || null,
-        status: document.getElementById('personStatus').value || 'missing',
+        status: normalizedStatus,
         date_last_seen: document.getElementById('personLastSeen').value || null,
         primary_source: primarySource,
         source_url: document.getElementById('personSourceUrl').value.trim() || null
@@ -2042,14 +2054,26 @@ if (personCreateForm) {
         headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
       });
-      // Show created PFIF ID for confirmation
+      // Show created PFIF ID for confirmation and verify persistence
+      console.debug('Create person response:', res);
       if (res && res.pfif_id) {
-        personStatusMsg.textContent = `Person created: ${res.pfif_id}`;
+        try {
+          const verify = await fetchJson(`/api/persons/${encodeURIComponent(res.pfif_id)}`, { headers: { ...authHeaders } });
+          if (verify && verify.person) {
+            personStatusMsg.textContent = `Person created: ${res.pfif_id}`;
+            personCreateForm.reset();
+          } else {
+            personStatusMsg.textContent = `Person created: ${res.pfif_id} (verification failed)`;
+            console.warn('Person created but verification returned unexpected body', verify);
+          }
+        } catch (ve) {
+          console.error('Verification failed after create:', ve);
+          personStatusMsg.textContent = `Person created: ${res.pfif_id} (verification failed: ${ve.message || ve})`;
+        }
       } else {
         personStatusMsg.textContent = 'Person created.';
+        personCreateForm.reset();
       }
-      console.debug('Create person response:', res);
-      personCreateForm.reset();
     } catch (err) {
       console.error('Failed to create person:', err);
       if (err && err.status === 401) {
