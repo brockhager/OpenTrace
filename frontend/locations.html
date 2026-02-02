@@ -43,6 +43,8 @@
       locationsResults.innerHTML = '';
       try {
         const payload = await fetchJson('/api/locations?limit=500');
+        // sort alphabetically by display_name (case-insensitive)
+        if (Array.isArray(payload)) payload.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || '', undefined, { sensitivity: 'base' }));
         if (!payload.length) {
           locationsStatus.textContent = 'No locations found.';
           return;

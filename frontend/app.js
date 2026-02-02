@@ -678,6 +678,8 @@ if (loadLocationsBtn) {
         headers: getAuthHeaders()
       });
       const locations = Array.isArray(payload) ? payload : [];
+      // sort alphabetically by display_name
+      locations.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || '', undefined, { sensitivity: 'base' }));
       // Filter by active status based on checkbox
       const showUnconfirmed = document.getElementById('showUnconfirmedLocations')?.checked;
       const filteredLocations = locations.filter(loc => {
@@ -979,6 +981,8 @@ if (locationsForm) {
     locationsResults.innerHTML = '';
     try {
       const payload = await fetchJson(`/api/locations/search?q=${encodeURIComponent(q)}&limit=25`);
+      // sort alphabetically by display_name
+      if (Array.isArray(payload)) payload.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || '', undefined, { sensitivity: 'base' }));
       if (!payload.length) {
         locationsStatus.textContent = 'No locations found.';
         return;
@@ -1364,6 +1368,8 @@ async function loadPersonDetail() {
           });
           // API returns a plain array for public endpoint; admin endpoints may return arrays too
           const locs = Array.isArray(response) ? response : (response.locations || []);
+          // sort alphabetically for better UX
+          locs.sort((a, b) => (a.display_name || '').localeCompare(b.display_name || '', undefined, { sensitivity: 'base' }));
           if (!locs.length) {
             personStatusEl.textContent = 'No locations available.';
             return;
