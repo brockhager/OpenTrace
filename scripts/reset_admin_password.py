@@ -8,6 +8,7 @@ import sys
 import asyncio
 from pathlib import Path
 import re
+import argparse
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -18,7 +19,7 @@ from auth.models import AdminUser
 from auth.security import get_password_hash
 
 
-async def reset_password(email: str = None):
+async def reset_password(email: str = None, no_check: bool = False):
     if not email:
         email = input("Admin email: ").strip()
     if not email:
@@ -26,16 +27,23 @@ async def reset_password(email: str = None):
         return
 
     import getpass
-    print("Password requirements: at least 8 characters, include uppercase and lowercase letters, a number, and a symbol.")
-    pw = getpass.getpass("New password (min 8 chars, include upper/lowercase, number, symbol): ").strip()
-    confirm = getpass.getpass("Confirm password: ").strip()
-    if pw != confirm:
-        print("Passwords do not match")
-        return
-    # Enforce complexity
-    if len(pw) < 8 or not re.search(r"[A-Z]", pw) or not re.search(r"[a-z]", pw) or not re.search(r"[0-9]", pw) or not re.search(r"[^A-Za-z0-9]", pw):
-        print("Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol")
-        return
+    if not no_check:
+        print("Password requirements: at least 8 characters, include uppercase and lowercase letters, a number, and a symbol.")
+        pw = getpass.getpass("New password (min 8 chars, include upper/lowercase, number, symbol): ").strip()
+        confirm = getpass.getpass("Confirm password: ").strip()
+        if pw != confirm:
+            print("Passwords do not match")
+            return
+        # Enforce complexity
+        if len(pw) < 8 or not re.search(r"[A-Z]", pw) or not re.search(r"[a-z]", pw) or not re.search(r"[0-9]", pw) or not re.search(r"[^A-Za-z0-9]", pw):
+            print("Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol")
+            return
+    else:
+        pw = getpass.getpass("New password (no checks): ").strip()
+        confirm = getpass.getpass("Confirm password: ").strip()
+        if pw != confirm:
+            print("Passwords do not match")
+            return
 
     hashed = get_password_hash(pw)
     try:
@@ -53,5 +61,8 @@ async def reset_password(email: str = None):
 
 
 if __name__ == '__main__':
-    email = sys.argv[1] if len(sys.argv) > 1 else None
-    asyncio.run(reset_password(email))
+    parser = argparse.ArgumentParser(description='Reset an admin password')
+    parser.add_argument('email', nargs='?', help='Admin email')
+    parser.add_argument('--no-check', action='store_true', help='Skip password complexity checks')
+    args = parser.parse_args()
+    asyncio.run(reset_password(args.email, args.no_check))
