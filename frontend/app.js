@@ -271,11 +271,12 @@ function renderRow(p){
   const author = p.author_name || p.primary_source || 'Unknown source';
   const id = p.pfif_id || p.id || '';
   const pfifId = p.pfif_id || p.id || '';  // Use id as fallback for data attribute
+  const displayName = normalizeName(`${p.given_name || ''} ${p.family_name || ''}`) || 'Unnamed';
   
   return `
     <div class="card">
       <span class="card-id">${escapeHtml(id)}</span>
-      <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
+      <h4>${escapeHtml(displayName)}</h4>
       <p>${escapeHtml(location)} — ${escapeHtml(author)}</p>
       <p>
     <button data-pfif="${encodeURIComponent(pfifId)}" class="approve">Approve</button>
@@ -428,11 +429,13 @@ if (loadPersonsBtn) {
         adminPersonsList.innerHTML = '<em>No persons found</em>';
         return;
       }
-      adminPersonsList.innerHTML = filteredPersons.map(p => `
+      adminPersonsList.innerHTML = filteredPersons.map(p => {
+        const displayName = normalizeName(`${p.given_name || ''} ${p.family_name || ''}`) || 'Unnamed';
+        return `
         <div class="card">
           <div class="card-left">
             <span class="card-id">${escapeHtml(p.pfif_id)}</span>
-            <h4>${escapeHtml(p.given_name || '')} ${escapeHtml(p.family_name || '')}</h4>
+            <h4>${escapeHtml(displayName)}</h4>
             <p class="meta">Status: ${escapeHtml(p.status)} | Confirmed: ${p.is_confirmed ? 'Yes' : 'No'}</p>
           </div>
           <div class="card-actions">
@@ -440,7 +443,7 @@ if (loadPersonsBtn) {
             <button class="danger delete-person" data-pfif="${encodeURIComponent(p.pfif_id)}">Delete</button>
           </div>
         </div>
-      `).join('');
+      `}).join('');
     } catch (err) {
       console.error('Load persons error:', err);
       adminPersonsList.innerHTML = '<em>Failed to load persons</em>';
@@ -645,7 +648,7 @@ document.addEventListener('click', async (e) => {
 });
 
 function renderCard(p) {
-  const name = `${p.given_name || ''} ${p.family_name || ''}`.trim() || 'Unnamed';
+  const name = normalizeName(`${p.given_name || ''} ${p.family_name || ''}`) || 'Unnamed';
   const pfif = encodeURIComponent(p.pfif_id);
   return `
     <article class="card">
@@ -665,6 +668,16 @@ function escapeHtml(s){
     .replace(/>/g,'&gt;')
     .replace(/"/g,'&quot;')
     .replace(/'/g,"&#039;");
+}
+
+// Normalize names: remove zero-width characters, convert newlines to spaces, collapse whitespace
+function normalizeName(s){
+  if (!s && s !== '') return '';
+  return String(s)
+    .replace(/\u200B|\u200C|\u200D|\uFEFF/g, '') // zero-width chars
+    .replace(/\r?\n/g, ' ')                       // newlines -> space
+    .replace(/\s+/g, ' ')                         // collapse whitespace
+    .trim();
 }
 
 // Quick search on load if ?q= is present
