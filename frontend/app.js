@@ -800,7 +800,7 @@ async function loadEvents(params = {}) {
           <p><strong>Timestamp:</strong> ${escapeHtml(event.event_timestamp || '—')}</p>
           <p class="meta">Person: ${escapeHtml(event.person_id || '—')} · Location: ${escapeHtml(event.location_id || '—')}</p>
           <p><a href="/event-detail.html?id=${eventId}">View details</a></p>
-          ${event.source_url ? `<p><a href="${event.source_url}" target="_blank">Source</a></p>` : ''}
+          ${event.source_url ? `<p><strong>Source:</strong> <a href="${escapeHtml(event.source_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(event.source_url)}</a> ${event.source_type ? `<em>(${escapeHtml(event.source_type)})</em>` : ''}</p>` : ''}
         </article>
       `;
     }).join('');
@@ -1102,6 +1102,7 @@ async function loadLocationDetail() {
       <p><strong>Country:</strong> ${escapeHtml(location.country_name || '—')} (${escapeHtml(location.country_code || '—')})</p>
       <p><strong>Admin1 (State/Province):</strong> ${escapeHtml(location.admin1_name || '—')}</p>
       <p><strong>Locality (City):</strong> ${escapeHtml(location.locality || '—')}</p>
+      ${location.source_url ? `<p><strong>Source:</strong> <a href="${escapeHtml(location.source_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(location.source_url)}</a> ${location.source_system ? `<em>(${escapeHtml(location.source_system)})</em>` : ''}</p>` : ''}
       <p class="meta">Confidence: ${location.confidence_score ?? '—'}</p>
     `;
     locationStatusEl.textContent = '';

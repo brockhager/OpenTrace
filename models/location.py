@@ -149,6 +149,11 @@ class Location(Base):
 
     def to_public_dict(self) -> Dict[str, Any]:
         """Return safe public representation."""
+        # Extract a source URL if provided in source_data JSON (common keys: url, source_url)
+        source_url = None
+        if isinstance(self.source_data, dict):
+            source_url = self.source_data.get('source_url') or self.source_data.get('url')
+
         return {
             "location_id": self.location_id,
             "display_name": self.display_name,
@@ -161,11 +166,18 @@ class Location(Base):
             "admin1_name": self.admin1_name,
             "locality": self.locality,
             "location_type": self.location_type,
-            "confidence_score": float(self.confidence_score)
+            "confidence_score": float(self.confidence_score),
+            "source_system": self.source_system,
+            "source_url": source_url
         }
 
     def to_admin_dict(self) -> Dict[str, Any]:
         """Return full representation for admin use."""
+        # Extract a source URL if provided in source_data JSON (common keys: url, source_url)
+        source_url = None
+        if isinstance(self.source_data, dict):
+            source_url = self.source_data.get('source_url') or self.source_data.get('url')
+
         return {
             "location_id": self.location_id,
             "display_name": self.display_name,
@@ -188,6 +200,7 @@ class Location(Base):
             "importance": float(self.importance),
             "confidence_score": float(self.confidence_score),
             "source_system": self.source_system,
+            "source_url": source_url,
             "source_data": self.source_data,
             "created_at": self.created_at.isoformat() if self.created_at else None,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
