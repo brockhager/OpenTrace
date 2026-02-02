@@ -1905,6 +1905,13 @@ const personStatusMsg = document.getElementById('personStatusMsg');
 if (personCreateForm) {
   personCreateForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    // Require admin auth before attempting to create
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      personStatusMsg.textContent = 'Admin sign-in required to create persons. Please sign in via the Login box above.';
+      return;
+    }
+
     personStatusMsg.textContent = 'Creating person...';
     try {
       const givenName = document.getElementById('personGiven').value.trim() || null;
@@ -1924,13 +1931,20 @@ if (personCreateForm) {
       };
       await fetchJson('/api/persons', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
       });
       personStatusMsg.textContent = 'Person created.';
       personCreateForm.reset();
     } catch (err) {
-      personStatusMsg.textContent = 'Failed to create person.';
+      console.error('Failed to create person:', err);
+      if (err && err.status === 401) {
+        personStatusMsg.textContent = 'Authentication failed: please sign in as an admin.';
+      } else if (err && err.status === 409) {
+        personStatusMsg.textContent = 'Person already exists.';
+      } else {
+        personStatusMsg.textContent = 'Failed to create person: ' + (err.message || 'Unknown error');
+      }
     }
   });
 }
