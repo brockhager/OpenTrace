@@ -1641,6 +1641,11 @@ if (createLocationForm) {
 if (eventCreateForm) {
   eventCreateForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      eventStatus.textContent = 'Admin sign-in required to create events. Please sign in.';
+      return;
+    }
     eventStatus.textContent = 'Creating event...';
     try {
       const payload = {        event_id: generateEventId(),        name: document.getElementById('eventName').value.trim() || null,
@@ -1654,12 +1659,13 @@ if (eventCreateForm) {
       };
       await fetchJson('/api/events', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
       });
       eventStatus.textContent = 'Event created.';
       eventCreateForm.reset();
     } catch (err) {
+      console.error('Create event failed:', err);
       eventStatus.textContent = 'Failed to create event.';
     }
   });
@@ -1668,16 +1674,22 @@ if (eventCreateForm) {
 if (eventDeleteForm) {
   eventDeleteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      eventStatus.textContent = 'Admin sign-in required to delete events. Please sign in.';
+      return;
+    }
     eventStatus.textContent = 'Deleting event...';
     try {
       const eventId = sanitizeId(document.getElementById('eventDeleteId').value.trim());
       await fetchJson(`/api/events/${encodeURIComponent(eventId)}`, {
         method: 'DELETE',
-        headers: { ...getAuthHeaders() }
+        headers: { ...authHeaders }
       });
       eventStatus.textContent = 'Event deleted (soft).';
       eventDeleteForm.reset();
     } catch (err) {
+      console.error('Delete event failed:', err);
       eventStatus.textContent = 'Failed to delete event.';
     }
   });
@@ -1690,6 +1702,11 @@ const sourceStatus = document.getElementById('sourceStatus');
 if (sourceCreateForm) {
   sourceCreateForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      sourceStatus.textContent = 'Admin sign-in required to create sources. Please sign in.';
+      return;
+    }
     sourceStatus.textContent = 'Creating source...';
     try {
       const dataTypes = document.getElementById('sourceDataTypes').value
@@ -1724,16 +1741,22 @@ if (sourceCreateForm) {
 if (sourceDeleteForm) {
   sourceDeleteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      sourceStatus.textContent = 'Admin sign-in required to delete sources. Please sign in.';
+      return;
+    }
     sourceStatus.textContent = 'Deleting source...';
     try {
       const sourceId = sanitizeId(document.getElementById('sourceDeleteId').value.trim());
       await fetchJson(`/api/sources/${encodeURIComponent(sourceId)}`, {
         method: 'DELETE',
-        headers: { ...getAuthHeaders() }
+        headers: { ...authHeaders }
       });
       sourceStatus.textContent = 'Source deleted.';
       sourceDeleteForm.reset();
     } catch (err) {
+      console.error('Delete source failed:', err);
       sourceStatus.textContent = 'Failed to delete source.';
     }
   });
@@ -1952,6 +1975,11 @@ if (personCreateForm) {
 if (personUpdateForm) {
   personUpdateForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      personStatusMsg.textContent = 'Admin sign-in required to update persons. Please sign in.';
+      return;
+    }
     personStatusMsg.textContent = 'Updating person...';
     try {
       const pfif = sanitizeId(document.getElementById('personUpdatePfif').value.trim());
@@ -1965,12 +1993,13 @@ if (personUpdateForm) {
       Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
       await fetchJson(`/api/persons/${encodeURIComponent(pfif)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
       });
       personStatusMsg.textContent = 'Person updated.';
       personUpdateForm.reset();
     } catch (err) {
+      console.error('Update person error:', err);
       personStatusMsg.textContent = 'Failed to update person.';
     }
   });
@@ -1979,16 +2008,22 @@ if (personUpdateForm) {
 if (personDeleteForm) {
   personDeleteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      personStatusMsg.textContent = 'Admin sign-in required to delete persons. Please sign in.';
+      return;
+    }
     personStatusMsg.textContent = 'Deleting person...';
     try {
       const pfif = sanitizeId(document.getElementById('personDeletePfif').value.trim());
       await fetchJson(`/api/persons/${encodeURIComponent(pfif)}`, {
         method: 'DELETE',
-        headers: { ...getAuthHeaders() }
+        headers: { ...authHeaders }
       });
       personStatusMsg.textContent = 'Person deleted (soft).';
       personDeleteForm.reset();
     } catch (err) {
+      console.error('Delete person error:', err);
       personStatusMsg.textContent = 'Failed to delete person.';
     }
   });
@@ -2003,6 +2038,11 @@ const locationStatusMsg = document.getElementById('locationStatusMsg');
 if (locationCreateForm) {
   locationCreateForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      locationStatusMsg.textContent = 'Admin sign-in required to create locations. Please sign in.';
+      return;
+    }
     locationStatusMsg.textContent = 'Creating location...';
     try {
       const displayName = document.getElementById('locationDisplay').value.trim();
@@ -2023,7 +2063,7 @@ if (locationCreateForm) {
       };
       const res = await fetch('/api/locations', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
@@ -2033,6 +2073,7 @@ if (locationCreateForm) {
       locationStatusMsg.textContent = 'Location created (or reactivated).';
       locationCreateForm.reset();
     } catch (err) {
+      console.error('Create location failed:', err);
       locationStatusMsg.textContent = `Failed to create location: ${err.message}`;
     }
   });
@@ -2041,6 +2082,11 @@ if (locationCreateForm) {
 if (locationUpdateForm) {
   locationUpdateForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      locationStatusMsg.textContent = 'Admin sign-in required to update locations. Please sign in.';
+      return;
+    }
     locationStatusMsg.textContent = 'Updating location...';
     try {
       const locationId = sanitizeId(document.getElementById('locationUpdateId').value.trim());
@@ -2055,12 +2101,13 @@ if (locationUpdateForm) {
       Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
       await fetchJson(`/api/locations/${encodeURIComponent(locationId)}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        headers: { 'Content-Type': 'application/json', ...authHeaders },
         body: JSON.stringify(payload)
       });
       locationStatusMsg.textContent = 'Location updated.';
       locationUpdateForm.reset();
     } catch (err) {
+      console.error('Update location failed:', err);
       locationStatusMsg.textContent = 'Failed to update location.';
     }
   });
@@ -2069,6 +2116,11 @@ if (locationUpdateForm) {
 if (locationDeleteForm) {
   locationDeleteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
+    const authHeaders = getAuthHeaders();
+    if (!authHeaders || !authHeaders.Authorization) {
+      locationStatusMsg.textContent = 'Admin sign-in required to delete locations. Please sign in.';
+      return;
+    }
     locationStatusMsg.textContent = 'Deleting location...';
     try {
       const locationId = sanitizeId(document.getElementById('locationDeleteId').value.trim());
@@ -2076,11 +2128,12 @@ if (locationDeleteForm) {
       const url = `/api/locations/${encodeURIComponent(locationId)}${hard ? '?hard=true' : ''}`;
       await fetchJson(url, {
         method: 'DELETE',
-        headers: { ...getAuthHeaders() }
+        headers: { ...authHeaders }
       });
       locationStatusMsg.textContent = hard ? 'Location deleted (hard).' : 'Location deleted (soft).';
       locationDeleteForm.reset();
     } catch (err) {
+      console.error('Delete location failed:', err);
       locationStatusMsg.textContent = `Failed to delete location: ${err.message}`;
     }
   });
