@@ -17,6 +17,7 @@ sys.path.insert(0, str(project_root))
 from db.session import async_session
 from auth.models import AdminUser
 from auth.security import get_password_hash
+from sqlalchemy import select
 
 
 async def reset_password(email: str = None, no_check: bool = False):
@@ -48,11 +49,12 @@ async def reset_password(email: str = None, no_check: bool = False):
     hashed = get_password_hash(pw)
     try:
         async with async_session() as db:
-            result = await db.execute(AdminUser.__table__.select().where(AdminUser.email == email))
+            result = await db.execute(select(AdminUser).where(AdminUser.email == email))
             user = result.scalar_one_or_none()
             if not user:
                 print(f"Admin user not found: {email}")
                 return
+            # user is a mapped AdminUser instance
             user.hashed_password = hashed
             await db.commit()
         print(f"✅ Password updated for {email}")
