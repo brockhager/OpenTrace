@@ -114,6 +114,16 @@ async def create_person(
     admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """Create a person (admin-only)."""
+    # Normalize common synonyms (died, passed) into canonical statuses
+    try:
+        from scrapers.utils import normalize_status
+        if request.status:
+            mapped = normalize_status(request.status)
+            request.status = mapped
+    except Exception:
+        # If scraper utils not available, continue (defensive)
+        pass
+
     # Validate status against allowed set to avoid DB check constraint failures
     allowed_statuses = {"missing", "unidentified", "found"}
     if request.status and request.status not in allowed_statuses:

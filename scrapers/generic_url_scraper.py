@@ -262,6 +262,17 @@ class GenericUrlScraper:
                     print(f"Person {person_data['pfif_id']} already exists, skipping")
                     return False
 
+# Normalize status to avoid DB check violations
+                try:
+                    from .utils import normalize_status
+                    if 'status' in person_data and person_data['status']:
+                        normalized = normalize_status(person_data['status'])
+                        if normalized != person_data['status']:
+                            print(f"Normalizing status '{person_data['status']}' -> '{normalized}' for {person_data.get('pfif_id')}")
+                        person_data['status'] = normalized
+                except Exception:
+                    pass
+
                 # Create new Person record
                 person = Person(**person_data)
                 db.add(person)
