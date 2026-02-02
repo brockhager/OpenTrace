@@ -400,6 +400,26 @@ async def create_location(
     # Generate a location_id if the admin did not provide one
     location_id = request.location_id or generate_location_id_from_name(request.display_name)
 
+    # If location exists, reactivate and update if inactive; otherwise return conflict
+    existing = await db.execute(select(Location).where(Location.location_id == location_id))
+    loc = existing.scalar_one_or_none()
+    if loc:
+        if not loc.is_active:
+            loc.canonical_name = request.canonical_name
+            loc.display_name = request.display_name
+            loc.latitude = request.latitude if request.latitude is not None else None
+            loc.longitude = request.longitude if request.longitude is not None else None
+            loc.country_code = request.country_code
+            loc.country_name = request.country_name
+            loc.admin1_name = request.admin1_name
+            loc.locality = request.locality
+            loc.location_type = request.location_type
+            loc.coordinate_precision = request.coordinate_precision or 'approximate'
+            loc.is_active = True
+            await db.commit()
+            return {"location_id": location_id, "reactivated": True}
+        raise HTTPException(status_code=409, detail=f"Location already exists: {location_id} (active)")
+
     location = Location(
         location_id=location_id,
         canonical_name=request.canonical_name,
@@ -417,15 +437,8 @@ async def create_location(
     try:
         db.add(location)
         await db.commit()
-    except IntegrityError as ie:
-        # Likely duplicate key
+    except IntegrityError:
         await db.rollback()
-        # Try to fetch the existing record to provide more context
-        existing = await db.execute(select(Location).where(Location.location_id == location_id))
-        loc = existing.scalar_one_or_none()
-        if loc:
-            status = 'active' if loc.is_active else 'inactive'
-            raise HTTPException(status_code=409, detail=f"Location already exists: {location_id} ({status})")
         raise HTTPException(status_code=409, detail=f"Location already exists: {location_id}")
     except Exception as e:
         await db.rollback()
@@ -476,14 +489,24 @@ async def admin_list_all_locations(
 @router.delete("/locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_location(
     location_id: str,
+    hard: bool = Query(False, description="Hard delete (permanent)"),
     db: AsyncSession = Depends(get_db_session),
     admin: AdminUser = Depends(require_admin_role("admin"))
 ):
-    """Soft delete a location (admin-only)."""
+    """Soft delete a location (admin-only). Use hard=true to permanently delete."""
     result = await db.execute(select(Location).where(Location.location_id == location_id))
     location = result.scalar_one_or_none()
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
+    if hard:
+        # Attempt to remove related person_location rows first
+        await db.execute(
+            text("DELETE FROM person_location WHERE location_id = :loc_id"),
+            {"loc_id": location_id}
+        )
+        await db.delete(location)
+        await db.commit()
+        return None
     location.is_active = False
     await db.commit()
     return None

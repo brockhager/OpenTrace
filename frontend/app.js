@@ -1845,27 +1845,33 @@ if (locationCreateForm) {
     try {
       const displayName = document.getElementById('locationDisplay').value.trim();
       
+      const latVal = document.getElementById('locationLat').value;
+      const lngVal = document.getElementById('locationLng').value;
       const payload = {
         location_id: generateLocationId(displayName),
         display_name: displayName,
         canonical_name: document.getElementById('locationCanonical').value.trim(),
-        latitude: parseFloat(document.getElementById('locationLat').value),
-        longitude: parseFloat(document.getElementById('locationLng').value),
+        latitude: latVal ? parseFloat(latVal) : null,
+        longitude: lngVal ? parseFloat(lngVal) : null,
         country_code: document.getElementById('locationCountryCode').value.trim(),
         country_name: document.getElementById('locationCountryName').value.trim(),
         admin1_name: document.getElementById('locationAdmin1').value.trim() || null,
         locality: document.getElementById('locationLocality').value.trim() || null,
         location_type: document.getElementById('locationType').value.trim()
       };
-      await fetchJson('/api/locations', {
+      const res = await fetch('/api/locations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload)
       });
-      locationStatusMsg.textContent = 'Location created.';
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Create failed');
+      }
+      locationStatusMsg.textContent = 'Location created (or reactivated).';
       locationCreateForm.reset();
     } catch (err) {
-      locationStatusMsg.textContent = 'Failed to create location.';
+      locationStatusMsg.textContent = `Failed to create location: ${err.message}`;
     }
   });
 }
@@ -1904,14 +1910,16 @@ if (locationDeleteForm) {
     locationStatusMsg.textContent = 'Deleting location...';
     try {
       const locationId = sanitizeId(document.getElementById('locationDeleteId').value.trim());
-      await fetchJson(`/api/locations/${encodeURIComponent(locationId)}`, {
+      const hard = document.getElementById('locationDeleteHard')?.checked;
+      const url = `/api/locations/${encodeURIComponent(locationId)}${hard ? '?hard=true' : ''}`;
+      await fetchJson(url, {
         method: 'DELETE',
         headers: { ...getAuthHeaders() }
       });
-      locationStatusMsg.textContent = 'Location deleted (soft).';
+      locationStatusMsg.textContent = hard ? 'Location deleted (hard).' : 'Location deleted (soft).';
       locationDeleteForm.reset();
     } catch (err) {
-      locationStatusMsg.textContent = 'Failed to delete location.';
+      locationStatusMsg.textContent = `Failed to delete location: ${err.message}`;
     }
   });
 }
