@@ -420,6 +420,12 @@ async def create_location(
     except IntegrityError as ie:
         # Likely duplicate key
         await db.rollback()
+        # Try to fetch the existing record to provide more context
+        existing = await db.execute(select(Location).where(Location.location_id == location_id))
+        loc = existing.scalar_one_or_none()
+        if loc:
+            status = 'active' if loc.is_active else 'inactive'
+            raise HTTPException(status_code=409, detail=f"Location already exists: {location_id} ({status})")
         raise HTTPException(status_code=409, detail=f"Location already exists: {location_id}")
     except Exception as e:
         await db.rollback()
@@ -445,6 +451,26 @@ async def update_location(
         setattr(location, key, value)
     await db.commit()
     return {"message": "Location updated"}
+
+
+@router.get("/admin/locations/all")
+async def admin_list_all_locations(
+    db: AsyncSession = Depends(get_db_session),
+    admin: AdminUser = Depends(require_admin_role("admin"))
+):
+    """Admin debug endpoint: return all locations (including inactive) with minimal fields."""
+    result = await db.execute(select(Location).order_by(Location.location_id))
+    locations = result.scalars().all()
+    return [
+        {
+            "location_id": loc.location_id,
+            "display_name": loc.display_name,
+            "canonical_name": loc.canonical_name,
+            "is_active": bool(loc.is_active),
+            "created_at": loc.created_at.isoformat() if loc.created_at else None
+        }
+        for loc in locations
+    ]
 
 
 @router.delete("/locations/{location_id}", status_code=status.HTTP_204_NO_CONTENT)

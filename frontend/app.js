@@ -1249,9 +1249,36 @@ if (createLocationForm) {
       if (loadLocationsBtn) loadLocationsBtn.click();
     } catch (err) {
       console.error('Create location failed:', err);
-      createLocationStatus.textContent = `Failed to create location: ${err.message}`;
+      // If server returned JSON error detail, show that, else show generic
+      try {
+        const body = JSON.parse(err.message || '{}');
+        if (body && body.detail) createLocationStatus.textContent = `Failed: ${body.detail}`;
+        else createLocationStatus.textContent = `Failed to create location: ${err.message}`;
+      } catch (ex) {
+        createLocationStatus.textContent = `Failed to create location: ${err.message}`;
+      }
     }
   });
+
+  // List all locations (admin debug)
+  const listAllBtn = document.getElementById('listAllLocationsBtn');
+  const listResult = document.getElementById('listLocationsResult');
+  if (listAllBtn) {
+    listAllBtn.addEventListener('click', async () => {
+      listResult.textContent = 'Loading...';
+      try {
+        const res = await fetchJson('/api/admin/locations/all', { headers: getAuthHeaders() });
+        if (!Array.isArray(res)) {
+          listResult.textContent = 'Unexpected response';
+          return;
+        }
+        listResult.innerHTML = '<ul>' + res.map(l => `<li><strong>${escapeHtml(l.location_id)}</strong> — ${escapeHtml(l.display_name)} (${l.is_active ? 'active' : 'inactive'})</li>`).join('') + '</ul>';
+      } catch (err) {
+        console.error('List locations failed:', err);
+        listResult.textContent = `Failed to list locations: ${err.message}`;
+      }
+    });
+  }
 }
 if (eventCreateForm) {
   eventCreateForm.addEventListener('submit', async (e) => {
