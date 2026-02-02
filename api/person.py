@@ -101,7 +101,10 @@ async def get_person(
     person = result.scalar_one_or_none()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
-    return {"person": person.to_public_dict()}
+    # Include `is_confirmed` in the response so the frontend can display confirmation status
+    public = person.to_public_dict()
+    public['is_confirmed'] = bool(person.is_confirmed)
+    return {"person": public}
 
 
 @router.post("", status_code=status.HTTP_201_CREATED)
