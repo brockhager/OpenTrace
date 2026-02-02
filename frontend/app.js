@@ -673,11 +673,18 @@ function escapeHtml(s){
 // Normalize names: remove zero-width characters, convert newlines to spaces, collapse whitespace
 function normalizeName(s){
   if (!s && s !== '') return '';
-  return String(s)
+  let out = String(s)
     .replace(/\u200B|\u200C|\u200D|\uFEFF/g, '') // zero-width chars
     .replace(/\r?\n/g, ' ')                       // newlines -> space
     .replace(/\s+/g, ' ')                         // collapse whitespace
     .trim();
+  // If the name looks like single letters separated by spaces (e.g., "J O H N"), join them.
+  const tokens = out.split(' ');
+  const singleTokens = tokens.filter(t => t.length === 1);
+  if (tokens.length >= 3 && singleTokens.length / tokens.length >= 0.6) {
+    return tokens.join('');
+  }
+  return out;
 }
 
 // Quick search on load if ?q= is present
