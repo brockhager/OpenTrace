@@ -1193,34 +1193,7 @@ async function loadEventDetail() {
 
 loadEventDetail();
 
-// Admin forms for CRUD
-const personLocationForm = document.getElementById('personLocationForm');
-const personLocationStatus = document.getElementById('personLocationStatus');
-if (personLocationForm) {
-  personLocationForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    personLocationStatus.textContent = 'Adding location...';
-    try {
-      const pfif = sanitizeId(document.getElementById('personLocationPfif').value.trim());
-      const payload = {
-        text: document.getElementById('personLocationText').value.trim(),
-        event_type: document.getElementById('personLocationType').value.trim() || 'sighting',
-        event_date: document.getElementById('personLocationDate').value || null,
-        event_description: document.getElementById('personLocationDesc').value.trim() || null,
-        source_url: document.getElementById('personLocationSource').value.trim() || null
-      };
-      await fetchJson(`/api/persons/${encodeURIComponent(pfif)}/locations`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-        body: JSON.stringify(payload)
-      });
-      personLocationStatus.textContent = 'Location added.';
-      personLocationForm.reset();
-    } catch (err) {
-      personLocationStatus.textContent = 'Failed to add location.';
-    }
-  });
-}
+// Person-location admin UI/handlers removed temporarily (feature disabled)
 
 const eventCreateForm = document.getElementById('eventCreateForm');
 const eventDeleteForm = document.getElementById('eventDeleteForm');

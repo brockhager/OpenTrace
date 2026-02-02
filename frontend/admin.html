@@ -143,37 +143,7 @@
         <div id="urlStatus" class="status"></div>
       </section>
 
-      <section class="admin-section">
-        <h3>Person Locations (Add)</h3>
-        <form id="personLocationForm" class="form-grid">
-          <label>Person PFIF ID <span class="tooltip-icon" title="Unique identifier for the person">ⓘ</span>
-            <span class="tooltip-text">PFIF-compliant person ID, e.g., "opentrace.org/person.namus.MP12345"</span>
-            <input id="personLocationPfif" type="text" placeholder="opentrace.org/person/..." required />
-          </label>
-          <label>Location Text <span class="tooltip-icon" title="Where the person was seen">ⓘ</span>
-            <span class="tooltip-text">Human-readable location like "Venice Beach, Los Angeles" or "123 Main St, Springfield"</span>
-            <input id="personLocationText" type="text" placeholder="Venice Beach, Los Angeles" required />
-          </label>
-          <label>Event Type <span class="tooltip-icon" title="Type of event or sighting">ⓘ</span>
-            <span class="tooltip-text">e.g., "sighting", "last_seen", "movement", "contact"</span>
-            <input id="personLocationType" type="text" placeholder="sighting" />
-          </label>
-          <label>Event Date <span class="tooltip-icon" title="When this event occurred">ⓘ</span>
-            <span class="tooltip-text">Date and time when the person was seen or event occurred</span>
-            <input id="personLocationDate" type="datetime-local" />
-          </label>
-          <label>Event Description <span class="tooltip-icon" title="Additional details about the event">ⓘ</span>
-            <span class="tooltip-text">Optional description like "Seen near the pier wearing blue jacket"</span>
-            <input id="personLocationDesc" type="text" placeholder="Seen near the pier" />
-          </label>
-          <label>Source URL <span class="tooltip-icon" title="Reference link for this information">ⓘ</span>
-            <span class="tooltip-text">URL to the source report or article, e.g., news article or police report</span>
-            <input id="personLocationSource" type="url" placeholder="https://example.com/report" />
-          </label>
-          <button type="submit">Add Location</button>
-        </form>
-        <div id="personLocationStatus" class="status"></div>
-      </section>
+
 
       <section class="admin-section">
         <h3>Persons (Create / Update / Delete)</h3>

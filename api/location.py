@@ -340,105 +340,12 @@ async def get_location(
     )
 
 
-@router.get("/persons/{pfif_id:path}/locations")
-async def get_person_locations(
-    pfif_id: str,
-    db: AsyncSession = Depends(get_db_session)
-):
-    """
-    Get all location events for a specific person.
-    
-    Example:
-    GET /api/persons/opentrace.org/person/namus.MP24398/locations
-    """
-    try:
-        # Get person
-        person_result = await db.execute(
-            select(Person).where(Person.pfif_id == pfif_id)
-        )
-        person = person_result.scalar_one_or_none()
-        
-        if not person:
-            raise HTTPException(status_code=404, detail="Person not found")
-        
-        # Get person locations with location details
-        query = select(PersonLocation, Location).join(Location).where(
-            PersonLocation.pfif_id == pfif_id,
-            PersonLocation.is_public == True
-        ).order_by(PersonLocation.event_date.desc().nullslast())
-        
-        result = await db.execute(query)
-        rows = result.fetchall()
-        
-        locations = []
-        for person_loc, location in rows:
-            locations.append(person_loc.to_dict(location))
-        
-        return {
-            "person": person.to_public_dict(),
-            "locations": locations
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get person locations: {str(e)}")
+# Person-location endpoints removed temporarily (handled via Locations + Events in a later phase)
+# Previously: GET /persons/{pfif_id}/locations (removed)
 
 
-@router.post("/persons/{pfif_id:path}/locations")
-async def add_person_location(
-    pfif_id: str,
-    location_data: dict,
-    db: AsyncSession = Depends(get_db_session),
-    admin: AdminUser = Depends(require_admin_role("admin"))
-):
-    """
-    Add a location event for a person.
-    
-    Example:
-    POST /api/persons/opentrace.org/person/namus.MP24398/locations
-    {
-        "text": "Venice Beach, Los Angeles",
-        "event_type": "sighting",
-        "event_date": "2024-01-15T10:00:00Z",
-        "event_description": "Seen near the pier",
-        "source_url": "https://example.com/report"
-    }
-    """
-    try:
-        # Verify person exists
-        person_result = await db.execute(
-            select(Person).where(Person.pfif_id == pfif_id)
-        )
-        person = person_result.scalar_one_or_none()
-        
-        if not person:
-            raise HTTPException(status_code=404, detail="Person not found")
-        
-        # Resolve location
-        location = await location_resolver.resolve_location(
-            location_data.get('text', ''),
-            location_data.get('context', 'user_report')
-        )
-        
-        if not location:
-            raise HTTPException(status_code=400, detail="Could not resolve location")
-        
-        # Create person-location relationship
-        person_location = await location_resolver.create_person_location(
-            pfif_id=pfif_id,
-            location=location,
-            event_type=location_data.get('event_type', 'sighting'),
-            event_date=location_data.get('event_date'),
-            description=location_data.get('event_description'),
-            source_url=location_data.get('source_url')
-        )
-        
-        return {
-            "message": "Location added successfully",
-            "person_location": person_location.to_dict(location)
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to add location: {str(e)}")
+# Person-location endpoints removed temporarily (handled via Locations + Events in a later phase)
+# Previously: POST /persons/{pfif_id}/locations (removed) 
 
 
 @router.post("/locations", status_code=status.HTTP_201_CREATED)

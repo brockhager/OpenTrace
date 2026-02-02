@@ -239,7 +239,7 @@ async def main():
     print("   - Spatial search: /search?lat=34.0522&lng=-118.2437&radius_km=50")
     print("   - Location resolution: POST /api/resolve-location")
     print("   - Nearby persons: GET /api/nearby?lat=34.0522&lng=-118.2437")
-    print("   - Person locations: GET /api/persons/{pfif_id}/locations")
+
 
 
 if __name__ == "__main__":
