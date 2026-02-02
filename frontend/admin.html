@@ -32,6 +32,15 @@
       <h3>Unconfirmed Profiles</h3>
       <div id="profiles"></div>
 
+      <!-- Admin tab navigation -->
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" data-tab="overview">Overview</button>
+        <button class="admin-tab-btn" data-tab="scrapers">Scrapers</button>
+        <button class="admin-tab-btn" data-tab="entities">Entities</button>
+        <button class="admin-tab-btn" data-tab="users">Admin Users</button>
+      </div>
+
+      <div id="tab-overview" class="admin-tab active">
       <section class="admin-section">
         <h3>📋 Manage Entities</h3>
         <p class="form-note">View and manage all entities in the system</p>
@@ -78,7 +87,9 @@
           </div>
         </div>
       </section>
+      </div>
 
+      <div id="tab-users" class="admin-tab">
       <section class="admin-section">
         <h3>🔐 Admin Users</h3>
         <p class="form-note">Manage moderator accounts: create users, reset passwords, deactivate or hard-delete accounts.</p>
@@ -115,7 +126,9 @@
           </div>
         </div>
       </section>
+      </div>
 
+      <div id="tab-scrapers" class="admin-tab">
       <section class="admin-section">
         <h3>🌐 Generic URL Scraper</h3>
         <p class="form-note">Paste any URL of a missing person page (any website) to extract and import data</p>
@@ -179,7 +192,9 @@
         </form>
         <div id="urlStatus" class="status"></div>
       </section>
+      </div>
 
+      <div id="tab-entities" class="admin-tab">
       <section class="admin-section">
         <h3>Create Location</h3>
         <p class="form-note">Latitude & longitude are optional — you can add coordinates later</p>
@@ -501,6 +516,8 @@
         </form>
         <div id="sourceStatus" class="status"></div>
       </section>
+      </div>
+      </div>
     </section>
   </main>
 

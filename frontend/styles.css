@@ -403,6 +403,39 @@ body {
   font-size: 14px;
 }
 
+/* Admin tabs */
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0 24px;
+}
+
+.admin-tab-btn {
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  background: #f8f9fa;
+  color: var(--text-primary);
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-tab-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.admin-tab {
+  display: none;
+}
+
+.admin-tab.active {
+  display: block;
+}
+
 /* Results grid */
 .results {
   display: grid;

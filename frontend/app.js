@@ -231,6 +231,7 @@ if (loginForm) {
       loginStatus.textContent = 'Signed in';
       document.getElementById('loginSection').style.display = 'none';
       reviewSection.style.display = 'block';
+      initAdminTabs();
       await loadUnconfirmed();
     } catch (err) {
       loginStatus.textContent = 'Sign-in failed — check credentials';
@@ -242,6 +243,7 @@ const loginSection = document.getElementById('loginSection');
 if (reviewSection && token && loginSection) {
   loginSection.style.display = 'none';
   reviewSection.style.display = 'block';
+  initAdminTabs();
   loadUnconfirmed();
 }
 
@@ -272,6 +274,28 @@ async function loadUnconfirmed(){
   } catch (err) {
     profilesEl.innerHTML = '<em>Failed to load profiles</em>';
   }
+}
+
+function initAdminTabs() {
+  const tabButtons = document.querySelectorAll('.admin-tab-btn');
+  const tabs = document.querySelectorAll('.admin-tab');
+  if (!tabButtons.length || !tabs.length) return;
+
+  const activate = (name) => {
+    tabs.forEach(tab => {
+      tab.classList.toggle('active', tab.id === `tab-${name}`);
+    });
+    tabButtons.forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.tab === name);
+    });
+  };
+
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => activate(btn.dataset.tab));
+  });
+
+  const defaultBtn = document.querySelector('.admin-tab-btn.active') || tabButtons[0];
+  if (defaultBtn) activate(defaultBtn.dataset.tab);
 }
 
 function renderRow(p){
