@@ -12,6 +12,7 @@ from typing import Optional, List
 from pydantic import BaseModel
 import math
 import re
+from sqlalchemy.exc import IntegrityError
 
 from db.session import get_db_session
 from models.person import Person
@@ -381,6 +382,21 @@ async def create_location(
     admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """Create a new location (admin-only). Latitude/longitude are optional for manual entries."""
+    # Basic validation for required fields
+    missing = []
+    if not request.display_name:
+        missing.append('display_name')
+    if not request.canonical_name:
+        missing.append('canonical_name')
+    if not request.country_code:
+        missing.append('country_code')
+    if not request.country_name:
+        missing.append('country_name')
+    if not request.location_type:
+        missing.append('location_type')
+    if missing:
+        raise HTTPException(status_code=400, detail=f"Missing required fields: {', '.join(missing)}")
+
     # Generate a location_id if the admin did not provide one
     location_id = request.location_id or generate_location_id_from_name(request.display_name)
 
@@ -397,8 +413,19 @@ async def create_location(
         location_type=request.location_type,
         coordinate_precision=request.coordinate_precision or 'approximate'
     )
-    db.add(location)
-    await db.commit()
+
+    try:
+        db.add(location)
+        await db.commit()
+    except IntegrityError as ie:
+        # Likely duplicate key
+        await db.rollback()
+        raise HTTPException(status_code=409, detail=f"Location already exists: {location_id}")
+    except Exception as e:
+        await db.rollback()
+        # Return a short, useful message for debugging
+        raise HTTPException(status_code=500, detail=f"Failed to create location: {str(e)}")
+
     return {"location_id": location_id}
 
 
