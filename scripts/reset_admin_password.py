@@ -7,6 +7,7 @@ If email is omitted, you will be prompted for it.
 import sys
 import asyncio
 from pathlib import Path
+import re
 
 # Add project root to path
 project_root = Path(__file__).parent.parent
@@ -25,13 +26,15 @@ async def reset_password(email: str = None):
         return
 
     import getpass
-    pw = getpass.getpass("New password (min 8 chars): ").strip()
+    print("Password requirements: at least 8 characters, include uppercase and lowercase letters, a number, and a symbol.")
+    pw = getpass.getpass("New password (min 8 chars, include upper/lowercase, number, symbol): ").strip()
     confirm = getpass.getpass("Confirm password: ").strip()
     if pw != confirm:
         print("Passwords do not match")
         return
-    if len(pw) < 8:
-        print("Password must be at least 8 characters")
+    # Enforce complexity
+    if len(pw) < 8 or not re.search(r"[A-Z]", pw) or not re.search(r"[a-z]", pw) or not re.search(r"[0-9]", pw) or not re.search(r"[^A-Za-z0-9]", pw):
+        print("Password must be at least 8 characters and include uppercase, lowercase, a number, and a symbol")
         return
 
     hashed = get_password_hash(pw)
