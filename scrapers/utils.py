@@ -8,10 +8,10 @@ def normalize_status(status: str) -> str:
     if not status:
         return status
     s = status.strip().lower()
-    map_to_found = {'died', 'deceased', 'dead', 'passed', 'passed away'}
-    if s in {'missing', 'unidentified', 'found'}:
+    map_to_died = {'died', 'deceased', 'dead', 'passed', 'passed away'}
+    if s in {'missing', 'unidentified', 'found', 'died', 'other'}:
         return s
-    if s in map_to_found:
-        return 'found'
-    # Fallback: return original lowercased value (will be validated elsewhere)
-    return s
+    if s in map_to_died:
+        return 'died'
+    # Any unknown/ambiguous status => 'other' so the DB accepts it
+    return 'other'
