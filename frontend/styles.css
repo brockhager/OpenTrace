@@ -419,6 +419,14 @@ body {
   align-items: start;
 }
 
+/* Prevent vertical letter stacking in admin entity cards */
+.entity-grid .card h3,
+.entity-grid .card h4 {
+  word-break: normal;
+  overflow-wrap: normal;
+  white-space: normal;
+}
+
 /* Cards */
 .card {
   border: 1px solid var(--border);
