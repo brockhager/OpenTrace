@@ -197,7 +197,9 @@ async function fetchJson(url, options = {}) {
   const res = await fetch(url, options);
   if (!res.ok) {
     const message = await res.text();
-    throw new Error(message || 'Request failed');
+    const err = new Error(message || 'Request failed');
+    try { err.status = res.status; } catch (e) {}
+    throw err;
   }
   if (res.status === 204) return null;
   return res.json();
@@ -1426,7 +1428,14 @@ async function loadPersonDetail() {
             }, 500);
           } catch (e) {
             console.error('Failed to add location:', e);
-            personStatusEl.textContent = 'Failed to add location: ' + (e.message || 'Unknown error');
+            // Provide friendlier messages for common cases
+            if (e && e.status === 405) {
+              personStatusEl.textContent = 'Failed to add location: Method Not Allowed (server does not accept POST on this endpoint). Ensure the server is up-to-date and supports linking locations.';
+            } else if (e && (e.status === 401 || e.status === 403)) {
+              personStatusEl.textContent = 'Failed to add location: Authentication required (admin privileges). Please sign in as an admin.';
+            } else {
+              personStatusEl.textContent = 'Failed to add location: ' + (e.message || 'Unknown error');
+            }
           }
         });
       }
