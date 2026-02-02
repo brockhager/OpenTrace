@@ -52,11 +52,21 @@ async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(
     result = await db.execute(select(AdminUser).where(AdminUser.email == request.email, AdminUser.is_active == True))
     user = result.scalar_one_or_none()
     success = False
-    if user and verify_password(request.password, user.hashed_password):
+    pw_ok = False
+    if user:
+        try:
+            pw_ok = verify_password(request.password, user.hashed_password)
+        except Exception as e:
+            logger.exception("Error verifying password", extra={"email": request.email})
+            pw_ok = False
+    if pw_ok:
         access_token = create_access_token(data={"sub": user.email, "role": user.role})
         success = True
     else:
         access_token = None
+
+    # Log verification result for debugging (do not log password)
+    logger.info("Admin login verification", extra={"email": request.email, "verify_ok": pw_ok, "success": success})
 
     # Log attempt
     log_entry = IPLookupLog(
