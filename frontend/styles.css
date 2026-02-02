@@ -427,6 +427,20 @@ body {
   white-space: normal;
 }
 
+/* Prevent ID badge overlap in admin cards by using normal flow */
+.entity-grid .card {
+  align-items: flex-start;
+}
+
+.entity-grid .card .card-id {
+  position: static;
+  margin-left: auto;
+  align-self: flex-start;
+  max-width: 100%;
+  white-space: normal;
+  text-overflow: clip;
+}
+
 /* Cards */
 .card {
   border: 1px solid var(--border);
