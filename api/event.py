@@ -23,6 +23,13 @@ from core.logger import logger
 
 router = APIRouter(prefix="/api/events", tags=["events"])
 
+VALID_EVENT_TYPES = {
+    "sighting", "police_report", "status_change", "tip", "document",
+    "recovery", "false_alarm", "digital_trace",
+    "movement", "inspection", "handover", "report",
+    "departure", "arrival", "contact", "other"
+}
+
 
 # Pydantic request/response models
 class EventCreateRequest(BaseModel):
@@ -121,6 +128,13 @@ async def create_event(
     }
     """
     try:
+        if request.event_type not in VALID_EVENT_TYPES:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid event_type. Must be one of: {', '.join(sorted(VALID_EVENT_TYPES))}"
+            )
+        if db is None:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database not configured")
         # Validate person_id if provided
         if request.person_id:
             person_result = await db.execute(
@@ -181,9 +195,9 @@ async def create_event(
             event_type=event.event_type,
             event_timestamp=event.event_timestamp.isoformat() if event.event_timestamp else None,
             profile=event.profile,
-            person_id=event.person_id,
+            person_id=event.pfif_id,
             location_id=event.location_id,
-            confidence_score=event.confidence_score,
+            confidence_score=event.source_confidence,
             is_verified=event.is_verified,
             is_public=event.is_public,
             created_at=event.created_at.isoformat() if event.created_at else None,
@@ -216,6 +230,8 @@ async def get_event(
     GET /api/events/550e8400-e29b-41d4-a716-446655440000
     """
     try:
+        if db is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Database not configured")
         result = await db.execute(
             select(Event).where(Event.event_id == event_id)
         )
@@ -233,9 +249,9 @@ async def get_event(
             event_type=event.event_type,
             event_timestamp=event.event_timestamp.isoformat() if event.event_timestamp else None,
             profile=event.profile,
-            person_id=event.person_id,
+            person_id=event.pfif_id,
             location_id=event.location_id,
-            confidence_score=event.confidence_score,
+            confidence_score=event.source_confidence,
             is_verified=event.is_verified,
             is_public=event.is_public,
             created_at=event.created_at.isoformat() if event.created_at else None,
@@ -278,12 +294,14 @@ async def list_events(
     GET /api/events?location_id=los-angeles-ca-usa&start_date=2024-01-01
     """
     try:
+        if db is None:
+            return EventListResponse(events=[], total=0, page=page, page_size=page_size)
         # Build query
         query = select(Event)
         
         # Apply filters
         if person_id:
-            query = query.where(Event.person_id == person_id)
+            query = query.where(Event.pfif_id == person_id)
         if location_id:
             query = query.where(Event.location_id == location_id)
         if event_type:
@@ -293,11 +311,13 @@ async def list_events(
         if end_date:
             query = query.where(Event.event_timestamp <= end_date)
         if is_verified:
-            query = query.where(Event.is_verified == is_verified)
+            verified_bool = str(is_verified).lower() in ["true", "1", "verified", "yes"]
+            query = query.where(Event.is_verified == verified_bool)
         if is_public:
-            query = query.where(Event.is_public == is_public)
+            public_bool = str(is_public).lower() in ["true", "1", "public", "yes"]
+            query = query.where(Event.is_public == public_bool)
         if confidence_score:
-            query = query.where(Event.confidence_score == confidence_score)
+            query = query.where(Event.source_confidence == confidence_score)
         
         # Order by timestamp descending (newest first)
         query = query.order_by(desc(Event.event_timestamp))
@@ -323,9 +343,9 @@ async def list_events(
                     event_type=event.event_type,
                     event_timestamp=event.event_timestamp.isoformat() if event.event_timestamp else None,
                     profile=event.profile,
-                    person_id=event.person_id,
+                    person_id=event.pfif_id,
                     location_id=event.location_id,
-                    confidence_score=event.confidence_score,
+                    confidence_score=event.source_confidence,
                     is_verified=event.is_verified,
                     is_public=event.is_public,
                     created_at=event.created_at.isoformat() if event.created_at else None,
@@ -364,32 +384,35 @@ async def get_person_timeline(
     GET /api/events/person/opentrace.org/person/namus.MP24398/timeline
     """
     try:
+        if db is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Database not configured")
+
         # Verify person exists
         person_result = await db.execute(
             select(Person).where(Person.pfif_id == person_id)
-            )
+        )
         if not person_result.scalar_one_or_none():
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Person with pfif_id '{person_id}' not found"
             )
-        
+
         # Build query
         query = select(Event).where(
-            Event.person_id == person_id,
-            Event.is_public == "public"  # Only show public events in timeline
+            Event.pfif_id == person_id,
+            Event.is_public == True  # Only show public events in timeline
         )
-        
+
         if start_date:
             query = query.where(Event.event_timestamp >= start_date)
         if end_date:
             query = query.where(Event.event_timestamp <= end_date)
-        
+
         query = query.order_by(Event.event_timestamp)
-        
+
         result = await db.execute(query)
         events = result.scalars().all()
-        
+
         return {
             "person_id": person_id,
             "event_count": len(events),
@@ -401,13 +424,13 @@ async def get_person_timeline(
                     "event_timestamp": event.event_timestamp.isoformat() if event.event_timestamp else None,
                     "profile": event.profile,
                     "location_id": event.location_id,
-                    "confidence_score": event.confidence_score,
+                    "confidence_score": event.source_confidence,
                     "is_verified": event.is_verified
                 }
                 for event in events
             ]
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -437,6 +460,9 @@ async def get_location_events(
     GET /api/events/location/los-angeles-ca-usa/events
     """
     try:
+        if db is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Database not configured")
+
         # Verify location exists
         location_result = await db.execute(
             select(Location).where(Location.location_id == location_id)
@@ -446,32 +472,32 @@ async def get_location_events(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Location with location_id '{location_id}' not found"
             )
-        
+
         # Build query
         query = select(Event).where(
             Event.location_id == location_id,
-            Event.is_public == "public"
+            Event.is_public == True
         )
-        
+
         if start_date:
             query = query.where(Event.event_timestamp >= start_date)
         if end_date:
             query = query.where(Event.event_timestamp <= end_date)
-        
+
         query = query.order_by(desc(Event.event_timestamp))
-        
+
         # Get total
         count_query = select(func.count()).select_from(query.subquery())
         total_result = await db.execute(count_query)
         total = total_result.scalar()
-        
+
         # Apply pagination
         offset = (page - 1) * page_size
         query = query.offset(offset).limit(page_size)
-        
+
         result = await db.execute(query)
         events = result.scalars().all()
-        
+
         return {
             "location_id": location_id,
             "event_count": len(events),
@@ -485,14 +511,14 @@ async def get_location_events(
                     "event_type": event.event_type,
                     "event_timestamp": event.event_timestamp.isoformat() if event.event_timestamp else None,
                     "profile": event.profile,
-                    "person_id": event.person_id,
-                    "confidence_score": event.confidence_score,
+                    "person_id": event.pfif_id,
+                    "confidence_score": event.source_confidence,
                     "is_verified": event.is_verified
                 }
                 for event in events
             ]
         }
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -522,24 +548,26 @@ async def delete_event(
     DELETE /api/events/550e8400-e29b-41d4-a716-446655440000
     """
     try:
+        if db is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Database not configured")
+
         result = await db.execute(
             select(Event).where(Event.event_id == event_id)
         )
         event = result.scalar_one_or_none()
-        
+
         if not event:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail=f"Event with id '{event_id}' not found"
             )
-        
-        # Mark as private instead of hard delete (soft delete)
-        # This maintains audit trail while removing from public view
-        event.is_public = "private"
-        event.is_verified = "disputed"
-        
+
+        # Soft delete: hide from public view
+        event.is_public = False
+        event.is_verified = False
+
         await db.commit()
-        
+
         logger.info(
             "Event soft-deleted (marked private)",
             extra={
@@ -547,9 +575,9 @@ async def delete_event(
                 "action": "event_soft_delete"
             }
         )
-        
+
         return None
-        
+
     except HTTPException:
         raise
     except Exception as e:
@@ -572,37 +600,38 @@ async def verify_event(
 ):
     """
     Update the verification status of an event.
-    
+
     This is the only allowed update operation for events (immutability constraint).
     Verification status does not alter the event data itself.
-    
+
     Example:
     PATCH /api/events/550e8400-e29b-41d4-a716-446655440000/verify?verified_status=verified
     """
     try:
-        result = await db.execute(
-            select(Event).where(Event.event_id == event_id)
-        )
-        event = result.scalar_one_or_none()
-        
-        if not event:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Event with id '{event_id}' not found"
-            )
-        
-        # Validate status
         valid_statuses = ["unverified", "pending", "verified", "disputed"]
         if verified_status not in valid_statuses:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Invalid verification status. Must be one of: {', '.join(valid_statuses)}"
             )
-        
-        event.is_verified = verified_status
+        if db is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Database not configured")
+
+        result = await db.execute(
+            select(Event).where(Event.event_id == event_id)
+        )
+        event = result.scalar_one_or_none()
+
+        if not event:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Event with id '{event_id}' not found"
+            )
+
+        event.is_verified = True if verified_status == "verified" else False
         await db.commit()
         await db.refresh(event)
-        
+
         logger.info(
             "Event verification updated",
             extra={
@@ -611,23 +640,23 @@ async def verify_event(
                 "action": "event_verify"
             }
         )
-        
+
         return EventResponse(
             event_id=str(event.event_id),
             name=event.name,
             event_type=event.event_type,
             event_timestamp=event.event_timestamp.isoformat() if event.event_timestamp else None,
             profile=event.profile,
-            person_id=event.person_id,
+            person_id=event.pfif_id,
             location_id=event.location_id,
-            confidence_score=event.confidence_score,
+            confidence_score=event.source_confidence,
             is_verified=event.is_verified,
             is_public=event.is_public,
             created_at=event.created_at.isoformat() if event.created_at else None,
             source_type=event.source_type,
             source_url=event.source_url
         )
-        
+
     except HTTPException:
         raise
     except Exception as e:

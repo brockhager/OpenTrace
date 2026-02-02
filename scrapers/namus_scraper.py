@@ -107,6 +107,7 @@ class NamUsScraper:
         name_elem = soup.find('h1', class_='case-name')
         if name_elem:
             full_name = name_elem.get_text(strip=True)
+            person_data['full_name'] = full_name
             # Simple name parsing - could be enhanced
             if ',' in full_name:
                 # "Last, First" format
@@ -127,7 +128,9 @@ class NamUsScraper:
         age_elem = soup.find(string='Age:').find_next('td') if soup.find(string='Age:') else None
         if age_elem:
             try:
-                person_data['age_at_disappearance'] = int(age_elem.get_text(strip=True))
+                age_val = int(age_elem.get_text(strip=True))
+                person_data['age_at_disappearance'] = age_val
+                person_data['age'] = age_val
             except ValueError:
                 pass
 
@@ -135,6 +138,26 @@ class NamUsScraper:
         sex_elem = soup.find(string='Sex:').find_next('td') if soup.find(string='Sex:') else None
         if sex_elem:
             person_data['sex'] = sex_elem.get_text(strip=True)
+
+        # Last seen location (from circumstances section)
+        circumstances = soup.find('h2', string=lambda s: s and 'Circumstances' in s)
+        if circumstances:
+            p = circumstances.find_next('p')
+            if p:
+                person_data['last_seen_location'] = p.get_text(strip=True)
+
+        # Photo URLs
+        photo_urls = []
+        for img in soup.select('img.case-photo'):
+            src = img.get('src')
+            if not src:
+                continue
+            if src.startswith('http://') or src.startswith('https://'):
+                photo_urls.append(src)
+            else:
+                photo_urls.append(f"{self.BASE_URL}{src}")
+        if photo_urls:
+            person_data['photo_urls'] = photo_urls
 
         # Date last seen (try to extract from circumstances)
         date_seen_elem = soup.find(string='Date Last Seen:').find_next('td') if soup.find(string='Date Last Seen:') else None

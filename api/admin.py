@@ -47,6 +47,21 @@ class NamUsScanRequest(BaseModel):
 class UrlScrapeRequest(BaseModel):
     url: str
 
+
+# Admin user management request shapes
+class AdminCreateRequest(BaseModel):
+    email: str
+    password: str
+    role: Optional[str] = "admin"
+
+class AdminPasswordUpdateRequest(BaseModel):
+    email: str
+    password: str
+
+class AdminActionRequest(BaseModel):
+    email: str
+    hard: Optional[bool] = False
+
 @router.post("/login")
 async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(get_db_session)):
     result = await db.execute(select(AdminUser).where(AdminUser.email == request.email, AdminUser.is_active == True))
@@ -226,6 +241,96 @@ async def trigger_namus_scrape(request: NamUsScrapeRequest, db: AsyncSession = D
             "created": created,
             "person": person_data
         }
+
+
+# -------------------------------
+# Admin user management endpoints
+# -------------------------------
+
+@router.get("/admins", dependencies=[Depends(require_admin_role("admin"))])
+async def list_admins(db: AsyncSession = Depends(get_db_session)):
+    """List admin users."""
+    if db is None:
+        return {"admins": [], "total": 0}
+    result = await db.execute(select(AdminUser).order_by(AdminUser.email))
+    rows = result.scalars().all()
+    return {
+        "admins": [
+            {
+                "id": str(r.id),
+                "email": r.email,
+                "role": r.role,
+                "is_active": bool(r.is_active),
+                "created_at": r.created_at.isoformat() if r.created_at else None,
+            }
+            for r in rows
+        ],
+        "total": len(rows)
+    }
+
+@router.post("/admins", dependencies=[Depends(require_admin_role("admin"))])
+async def create_admin(request: AdminCreateRequest, admin: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
+    """Create a new admin user."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    # Check exists
+    result = await db.execute(select(AdminUser).where(AdminUser.email == request.email))
+    existing = result.scalar_one_or_none()
+    if existing:
+        raise HTTPException(status_code=400, detail="Admin user already exists")
+
+    from auth.security import get_password_hash
+    hashed = get_password_hash(request.password)
+    new_user = AdminUser(email=request.email, hashed_password=hashed, role=request.role, is_active=True)
+    db.add(new_user)
+
+    audit = AuditLog(action="create_admin", actor_id=str(admin.id), target_id=None, details={"email": request.email})
+    db.add(audit)
+
+    await db.commit()
+    return {"message": "admin_created", "email": request.email}
+
+@router.post("/admins/password", dependencies=[Depends(require_admin_role("admin"))])
+async def reset_admin_password(request: AdminPasswordUpdateRequest, admin: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
+    """Reset an admin user's password."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    result = await db.execute(select(AdminUser).where(AdminUser.email == request.email))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=404, detail="Admin user not found")
+    from auth.security import get_password_hash
+    user.hashed_password = get_password_hash(request.password)
+
+    audit = AuditLog(action="reset_admin_password", actor_id=str(admin.id), target_id=str(user.id), details={"email": user.email})
+    db.add(audit)
+
+    await db.commit()
+    return {"message": "password_reset", "email": user.email}
+
+@router.post("/admins/delete", dependencies=[Depends(require_admin_role("admin"))])
+async def delete_admin(request: AdminActionRequest, admin: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
+    """Deactivate (soft) or hard-delete an admin user."""
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    if request.hard:
+        # Hard delete
+        result = await db.execute(select(AdminUser).where(AdminUser.email == request.email))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="Admin user not found")
+        await db.execute(delete(AdminUser).where(AdminUser.email == request.email))
+        action = "hard_delete_admin"
+    else:
+        await db.execute(update(AdminUser).where(AdminUser.email == request.email).values(is_active=False))
+        action = "deactivate_admin"
+
+    audit = AuditLog(action=action, actor_id=str(admin.id), target_id=None, details={"email": request.email, "hard": bool(request.hard)})
+    db.add(audit)
+
+    await db.commit()
+    return {"message": action, "email": request.email}
+
 
 @router.post("/scrape/namus-until-found", dependencies=[Depends(require_admin_role("admin"))])
 async def scan_namus_until_found(request: NamUsScanRequest, db: AsyncSession = Depends(get_db_session)):

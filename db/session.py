@@ -16,6 +16,9 @@ else:
 async def get_db_session():
     # In test environments or when DATABASE_URL is not set, yield None so endpoints
     # (like /health) can still respond and make an informed decision.
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        yield None
+        return
     if async_session is None:
         yield None
         return

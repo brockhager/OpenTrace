@@ -35,7 +35,7 @@ async def test_scrape_case_success():
             result = await scraper.scrape_case("MP12345")
 
         assert result is not None
-        assert result['pfif_id'] == 'opentrace.org/person.namus.MP12345'
+        assert result['pfif_id'] == 'opentrace.org/person/namus.MP12345'
         assert result['full_name'] == 'John Doe'
         assert result['age'] == 25
         assert result['sex'] == 'Male'

@@ -130,6 +130,17 @@ class Source(Base):
         CheckConstraint(reliability_score <= 1.0, name='reliability_max'),
     )
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        if self.trust_tier is None:
+            self.trust_tier = "standard"
+        if self.reliability_score is None:
+            self.reliability_score = 0.7
+        if self.verification_status is None:
+            self.verification_status = "unverified"
+        if self.is_active is None:
+            self.is_active = True
+
     def __repr__(self):
         return f"<Source(source_id='{self.source_id}', code='{self.source_code}', name='{self.source_name}')>"
 
