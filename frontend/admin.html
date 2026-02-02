@@ -236,8 +236,12 @@
             <input id="personSex" type="text" placeholder="Male, Female, Unknown" />
           </label>
           <label>Status <span class="tooltip-icon" title="Current case status">ⓘ</span>
-            <span class="tooltip-text">Status: "missing", "found", "deceased", or "closed"</span>
-            <input id="personStatus" type="text" placeholder="missing" />
+            <span class="tooltip-text">Status must be one of: "missing", "unidentified", "found"</span>
+            <select id="personStatus">
+              <option value="missing">missing</option>
+              <option value="unidentified">unidentified</option>
+              <option value="found">found</option>
+            </select>
           </label>
           <label>Date Last Seen <span class="tooltip-icon" title="Last known date person was seen">ⓘ</span>
             <span class="tooltip-text">The date when the person was last seen</span>
@@ -268,8 +272,13 @@
             <input id="personUpdateFamily" type="text" />
           </label>
           <label>Status <span class="tooltip-icon" title="Update case status">ⓘ</span>
-            <span class="tooltip-text">Change status to "found", "deceased", etc. Leave blank to keep current.</span>
-            <input id="personUpdateStatus" type="text" />
+            <span class="tooltip-text">Change status (leave blank to keep current): missing, unidentified, found</span>
+            <select id="personUpdateStatus">
+              <option value="">(No change)</option>
+              <option value="missing">missing</option>
+              <option value="unidentified">unidentified</option>
+              <option value="found">found</option>
+            </select>
           </label>
           <label>Confirmed <span class="tooltip-icon" title="Mark as verified">ⓘ</span>
             <span class="tooltip-text">Mark as confirmed (verified by authority) or unconfirmed</span>

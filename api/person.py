@@ -114,10 +114,23 @@ async def create_person(
     admin: AdminUser = Depends(require_admin_role("admin"))
 ):
     """Create a person (admin-only)."""
-    person = Person(**request.model_dump())
-    db.add(person)
-    await db.commit()
-    return {"pfif_id": person.pfif_id}
+    # Validate status against allowed set to avoid DB check constraint failures
+    allowed_statuses = {"missing", "unidentified", "found"}
+    if request.status and request.status not in allowed_statuses:
+        raise HTTPException(status_code=400, detail=f"Invalid status '{request.status}'. Allowed: {', '.join(sorted(allowed_statuses))}")
+    try:
+        person = Person(**request.model_dump())
+        db.add(person)
+        await db.commit()
+        return {"pfif_id": person.pfif_id}
+    except IntegrityError as ie:
+        await db.rollback()
+        # Likely duplicate primary key
+        raise HTTPException(status_code=409, detail="Person already exists")
+    except Exception as e:
+        await db.rollback()
+        logger.exception("Failed to create person", extra={"error": str(e)})
+        raise HTTPException(status_code=500, detail=f"Failed to create person: {str(e)}")
 
 
 @router.patch("/{pfif_id:path}")

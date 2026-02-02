@@ -2032,7 +2032,7 @@ if (personCreateForm) {
         family_name: familyName,
         age_at_disappearance: parseInt(document.getElementById('personAge').value || '', 10) || null,
         sex: document.getElementById('personSex').value.trim() || null,
-        status: document.getElementById('personStatus').value.trim() || 'missing',
+        status: document.getElementById('personStatus').value || 'missing',
         date_last_seen: document.getElementById('personLastSeen').value || null,
         primary_source: primarySource,
         source_url: document.getElementById('personSourceUrl').value.trim() || null
@@ -2051,7 +2051,14 @@ if (personCreateForm) {
       } else if (err && err.status === 409) {
         personStatusMsg.textContent = 'Person already exists.';
       } else {
-        personStatusMsg.textContent = 'Failed to create person: ' + (err.message || 'Unknown error');
+        // Try to parse error JSON body (some servers return {"detail":...})
+        try {
+          const body = JSON.parse(err.message || '{}');
+          if (body && body.detail) personStatusMsg.textContent = `Failed: ${body.detail}`;
+          else personStatusMsg.textContent = 'Failed to create person: ' + (err.message || 'Unknown error');
+        } catch (ex) {
+          personStatusMsg.textContent = 'Failed to create person: ' + (err.message || 'Unknown error');
+        }
       }
     }
   });
@@ -2072,7 +2079,7 @@ if (personUpdateForm) {
       const payload = {
         given_name: document.getElementById('personUpdateGiven').value.trim() || undefined,
         family_name: document.getElementById('personUpdateFamily').value.trim() || undefined,
-        status: document.getElementById('personUpdateStatus').value.trim() || undefined,
+        status: (document.getElementById('personUpdateStatus').value === '' ? undefined : document.getElementById('personUpdateStatus').value),
         is_confirmed: confirmed === '' ? undefined : confirmed === 'true'
       };
       Object.keys(payload).forEach(key => payload[key] === undefined && delete payload[key]);
