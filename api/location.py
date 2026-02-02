@@ -321,16 +321,30 @@ async def get_location(
     """Get a single location by ID."""
     if db is None:
         raise HTTPException(status_code=503, detail="Database unavailable")
+    # Try exact match first
     result = await db.execute(select(Location).where(Location.location_id == location_id))
     location = result.scalar_one_or_none()
+
+    # If not found, try a common LOC- prefix
+    if not location:
+        pref = f"LOC-{location_id}"
+        result = await db.execute(select(Location).where(Location.location_id == pref))
+        location = result.scalar_one_or_none()
+
+    # If still not found, try case-insensitive match
+    if not location:
+        result = await db.execute(select(Location).where(func.lower(Location.location_id) == location_id.lower()))
+        location = result.scalar_one_or_none()
+
     if not location:
         raise HTTPException(status_code=404, detail="Location not found")
+
     return LocationResolveResponse(
         location_id=location.location_id,
         display_name=location.display_name,
         canonical_name=location.canonical_name,
-        latitude=float(location.latitude),
-        longitude=float(location.longitude),
+        latitude=float(location.latitude) if location.latitude is not None else None,
+        longitude=float(location.longitude) if location.longitude is not None else None,
         coordinate_precision=location.coordinate_precision,
         country_code=location.country_code,
         country_name=location.country_name,
