@@ -999,6 +999,13 @@ async function loadPersonDetail() {
                 <option value="found" ${person.status === 'found' ? 'selected' : ''}>Found</option>
               </select>
             </label><br>
+            <label>Confirmed:<br>
+              <select id="edit_confirmed">
+                <option value="">No change</option>
+                <option value="true" ${person.is_confirmed === true ? 'selected' : ''}>Confirmed</option>
+                <option value="false" ${person.is_confirmed === false ? 'selected' : ''}>Unconfirmed</option>
+              </select>
+            </label><br>
             <label>Age at disappearance:<br><input id="edit_age" type="number" value="${escapeHtml(person.age_at_disappearance ?? '')}" /></label><br>
             <label>Sex:<br>
               <select id="edit_sex">
@@ -1032,10 +1039,13 @@ async function loadPersonDetail() {
           const primary = document.getElementById('edit_primary_source').value.trim();
           const sourceUrl = document.getElementById('edit_source_url').value.trim();
           const altsVal = document.getElementById('edit_alts').value.trim();
+          const confirmedVal = document.getElementById('edit_confirmed')?.value;
 
           if (given) payload.given_name = given;
           if (family) payload.family_name = family;
           if (status) payload.status = status;
+          // Only set is_confirmed if user explicitly selected a value (allow false)
+          if (typeof confirmedVal !== 'undefined' && confirmedVal !== '') payload.is_confirmed = confirmedVal === 'true';
           if (age) payload.age_at_disappearance = parseInt(age, 10);
           if (sex) payload.sex = sex;
           if (lastSeen) payload.date_last_seen = new Date(lastSeen).toISOString();
