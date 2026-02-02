@@ -272,6 +272,58 @@ async def search_locations(
         raise HTTPException(status_code=500, detail=f"Location search failed: {str(e)}")
 
 
+@router.get("/persons/{pfif_id}/locations")
+async def get_person_locations(
+    pfif_id: str,
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Get all locations linked to a specific person.
+    
+    Example:
+    GET /api/persons/opentrace.org/person/namus.MP12345/locations
+    """
+    if db is None:
+        return {"locations": []}
+    
+    try:
+        # Query PersonLocation join with Location
+        query = select(
+            PersonLocation,
+            Location.display_name,
+            Location.canonical_name,
+            Location.latitude,
+            Location.longitude
+        ).join(
+            Location, PersonLocation.location_id == Location.location_id
+        ).where(
+            PersonLocation.pfif_id == pfif_id
+        )
+        
+        result = await db.execute(query)
+        rows = result.all()
+        
+        locations = []
+        for row in rows:
+            person_loc, display_name, canonical_name, lat, lng = row
+            locations.append({
+                "id": str(person_loc.id),
+                "location_id": person_loc.location_id,
+                "display_name": display_name,
+                "canonical_name": canonical_name,
+                "latitude": float(lat) if lat else None,
+                "longitude": float(lng) if lng else None,
+                "event_type": person_loc.event_type,
+                "event_date": person_loc.event_date.isoformat() if person_loc.event_date else None,
+                "event_description": person_loc.event_description
+            })
+        
+        return {"locations": locations}
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get person locations: {str(e)}")
+
+
 @router.get("/locations", response_model=List[LocationResolveResponse])
 async def list_locations(
     q: Optional[str] = Query(None, description="Optional search query"),

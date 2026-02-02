@@ -983,7 +983,7 @@ if (locationsForm) {
         locationsStatus.textContent = 'No locations found.';
         return;
       }
-      locationsStatus.textContent = '';
+      locationsStatus.textContent = `Found ${payload.length} location(s).`;
       locationsResults.innerHTML = payload.map(loc => {
         const locId = encodeURIComponent(loc.location_id);
         return `
@@ -1143,7 +1143,7 @@ async function loadPersonDetail() {
     let locations = [];
     let timeline = [];
     try {
-      const locPayload = await fetchJson(`/api/locations?person_id=${encodeURIComponent(id)}`, { headers });
+      const locPayload = await fetchJson(`/api/persons/${encodeURIComponent(id)}/locations`, { headers });
       locations = locPayload.locations || [];
     } catch (e) {
       console.log('No locations found');

@@ -26,11 +26,46 @@
       <button type="submit">Search</button>
     </form>
 
-    <div id="locationsStatus" class="status" aria-live="polite">Search for a location to see results.</div>
+    <div id="locationsStatus" class="status" aria-live="polite">Loading locations...</div>
     <div id="locationsResults" class="results"></div>
   </main>
 
   <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
   <script src="/static/app.js"></script>
+  <script>
+    // Auto-load all locations on page init
+    document.addEventListener('DOMContentLoaded', async () => {
+      const locationsResults = document.getElementById('locationsResults');
+      const locationsStatus = document.getElementById('locationsStatus');
+      if (!locationsResults) return;
+      
+      locationsStatus.textContent = 'Loading locations...';
+      locationsResults.innerHTML = '';
+      try {
+        const payload = await fetchJson('/api/locations?limit=500');
+        if (!payload.length) {
+          locationsStatus.textContent = 'No locations found.';
+          return;
+        }
+        locationsStatus.textContent = '';
+        locationsResults.innerHTML = payload.map(loc => {
+          const locId = encodeURIComponent(loc.location_id);
+          return `
+            <article class="card">
+              <span class="card-id">${escapeHtml(humanId(loc.location_id))}</span>
+              <h3>${escapeHtml(loc.display_name)}</h3>
+              <p class="meta">${escapeHtml(loc.canonical_name)}</p>
+              <p><strong>Type:</strong> ${escapeHtml(loc.location_type)}</p>
+              <p><strong>Coords:</strong> ${loc.latitude}, ${loc.longitude}</p>
+              <p class="meta">Confidence: ${loc.confidence_score}</p>
+              <p><a href="/location-detail.html?id=${locId}">View details</a></p>
+            </article>
+          `;
+        }).join('');
+      } catch (err) {
+        locationsStatus.textContent = 'Failed to load locations — try searching.';
+      }
+    });
+  </script>
 </body>
 </html>
