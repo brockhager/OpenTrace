@@ -674,16 +674,15 @@ if (loadLocationsBtn) {
   loadLocationsBtn.addEventListener('click', async () => {
     adminLocationsList.innerHTML = 'Loading...';
     try {
-      const payload = await fetchJson('/api/locations?limit=100', {
+      const payload = await fetchJson('/api/admin/locations/all', {
         headers: getAuthHeaders()
       });
-      const locations = payload.locations || payload || [];
-      // Filter by confirmed status based on checkbox
+      const locations = Array.isArray(payload) ? payload : [];
+      // Filter by active status based on checkbox
       const showUnconfirmed = document.getElementById('showUnconfirmedLocations')?.checked;
       const filteredLocations = locations.filter(loc => {
-        if (loc.is_active === false) return false;
-        if (showUnconfirmed) return true;
-        return loc.is_confirmed !== false; // Locations may not have is_confirmed field
+        if (!showUnconfirmed && loc.is_active === false) return false;
+        return true;
       });
       if (!filteredLocations.length) {
         adminLocationsList.innerHTML = '<em>No locations found</em>';
@@ -695,6 +694,7 @@ if (loadLocationsBtn) {
             <span class="card-id">${escapeHtml(humanId(loc.location_id))}</span>
             <h4>${escapeHtml(loc.display_name)}</h4>
             <p class="meta">${escapeHtml(loc.canonical_name)}</p>
+            <p class="meta" style="font-size: 0.85rem; color: ${loc.is_active ? '#2ecc71' : '#e74c3c'};">${loc.is_active ? 'Active' : 'Inactive'}</p>
           </div>
           <div class="card-actions">
             <a href="/location-detail.html?id=${encodeURIComponent(loc.location_id)}" target="_blank">View</a> |
@@ -703,7 +703,7 @@ if (loadLocationsBtn) {
         </div>
       `).join('');
     } catch (err) {
-      adminLocationsList.innerHTML = '<em>Failed to load locations</em>';
+      adminLocationsList.innerHTML = `<em>Failed to load locations: ${escapeHtml(err.message)}</em>`;
     }
   });
 }
