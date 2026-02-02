@@ -1362,7 +1362,12 @@ async function loadPersonDetail() {
           const response = await fetchJson('/api/locations?limit=500', { 
             headers: getAuthHeaders() 
           });
-          const locs = response.locations || [];
+          // API returns a plain array for public endpoint; admin endpoints may return arrays too
+          const locs = Array.isArray(response) ? response : (response.locations || []);
+          if (!locs.length) {
+            personStatusEl.textContent = 'No locations available.';
+            return;
+          }
           locs.forEach(loc => {
             const option = document.createElement('option');
             option.value = loc.location_id;
