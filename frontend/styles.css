@@ -3,6 +3,7 @@
   --max-width: 600px;
   --accent: #4285f4;
   --border: #dadce0;
+  --border-strong: #cfcfcf; /* stronger divider for admin sections */
   --text-primary: #202124;
   --text-secondary: #5f6368;
   --background: #fff;
@@ -549,9 +550,16 @@ body {
 }
 
 .admin-section {
-  margin-top: 32px;
-  padding-top: 16px;
-  border-top: 1px solid var(--border);
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 2px solid var(--border-strong);
+}
+
+/* Optional visible rule used by explicit <hr class="admin-divider"> if inserted */
+.admin-divider {
+  border: none;
+  border-top: 1px solid var(--border-strong);
+  margin: 20px 0;
 }
 
 /* Approve button */
