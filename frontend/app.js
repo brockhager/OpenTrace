@@ -1199,6 +1199,60 @@ const eventCreateForm = document.getElementById('eventCreateForm');
 const eventDeleteForm = document.getElementById('eventDeleteForm');
 const eventStatus = document.getElementById('eventStatus');
 
+// Create Location admin form (lat/lng optional)
+const createLocationForm = document.getElementById('createLocationForm');
+const createLocationStatus = document.getElementById('createLocationStatus');
+if (createLocationForm) {
+  createLocationForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    createLocationStatus.textContent = 'Creating location...';
+    try {
+      const display = document.getElementById('locationDisplay').value.trim();
+      const canonical = document.getElementById('locationCanonical').value.trim();
+      const locationIdInput = document.getElementById('locationId').value.trim();
+      const countryCode = document.getElementById('locationCountryCode').value.trim();
+      const countryName = document.getElementById('locationCountry').value.trim();
+      const locType = document.getElementById('locationType').value.trim();
+      const admin1 = document.getElementById('locationAdmin1').value.trim() || null;
+      const locality = document.getElementById('locationLocality').value.trim() || null;
+      const latVal = document.getElementById('locationLat').value;
+      const lngVal = document.getElementById('locationLng').value;
+      const precision = document.getElementById('locationPrecision').value || 'approximate';
+
+      if (!display || !canonical || !countryCode || !countryName || !locType) {
+        createLocationStatus.textContent = 'Please provide required fields.';
+        return;
+      }
+
+      const payload = {
+        location_id: locationIdInput || generateLocationId(display),
+        display_name: display,
+        canonical_name: canonical,
+        country_code: countryCode,
+        country_name: countryName,
+        location_type: locType,
+        admin1_name: admin1,
+        locality: locality,
+        coordinate_precision: precision
+      };
+      if (latVal) payload.latitude = parseFloat(latVal);
+      if (lngVal) payload.longitude = parseFloat(lngVal);
+
+      const res = await fetchJson('/api/locations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify(payload)
+      });
+      createLocationStatus.textContent = `Created: ${res.location_id}`;
+      createLocationForm.reset();
+      // Refresh admin locations list if present
+      if (loadLocationsBtn) loadLocationsBtn.click();
+    } catch (err) {
+      console.error('Create location failed:', err);
+      createLocationStatus.textContent = `Failed to create location: ${err.message}`;
+    }
+  });
+}
 if (eventCreateForm) {
   eventCreateForm.addEventListener('submit', async (e) => {
     e.preventDefault();

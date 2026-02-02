@@ -143,7 +143,53 @@
         <div id="urlStatus" class="status"></div>
       </section>
 
-
+      <section class="admin-section">
+        <h3>Create Location</h3>
+        <p class="form-note">Latitude & longitude are optional — you can add coordinates later</p>
+        <form id="createLocationForm" class="form-grid">
+          <label>Location ID (optional)
+            <span class="tooltip-text">Leave empty to auto-generate</span>
+            <input id="locationId" type="text" placeholder="Leave empty to auto-generate" />
+          </label>
+          <label>Display Name
+            <input id="locationDisplay" type="text" placeholder="Los Angeles, CA" required />
+          </label>
+          <label>Canonical Name
+            <input id="locationCanonical" type="text" placeholder="Los Angeles, California, USA" required />
+          </label>
+          <label>Country Code
+            <input id="locationCountryCode" type="text" placeholder="US" maxlength="2" required />
+          </label>
+          <label>Country Name
+            <input id="locationCountry" type="text" placeholder="United States" required />
+          </label>
+          <label>Location Type
+            <input id="locationType" type="text" placeholder="city" required />
+          </label>
+          <label>Admin1 Name
+            <input id="locationAdmin1" type="text" />
+          </label>
+          <label>Locality
+            <input id="locationLocality" type="text" />
+          </label>
+          <label>Latitude (optional)
+            <input id="locationLat" type="number" step="0.000001" />
+          </label>
+          <label>Longitude (optional)
+            <input id="locationLng" type="number" step="0.000001" />
+          </label>
+          <label>Coordinate precision
+            <select id="locationPrecision">
+              <option value="approximate">Approximate</option>
+              <option value="exact">Exact</option>
+              <option value="region">Region</option>
+              <option value="country">Country</option>
+            </select>
+          </label>
+          <button type="submit">Create Location</button>
+        </form>
+        <div id="createLocationStatus" class="status"></div>
+      </section>
 
       <section class="admin-section">
         <h3>Persons (Create / Update / Delete)</h3>

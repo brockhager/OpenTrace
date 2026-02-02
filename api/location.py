@@ -11,6 +11,7 @@ from sqlalchemy.orm import selectinload
 from typing import Optional, List
 from pydantic import BaseModel
 import math
+import re
 
 from db.session import get_db_session
 from models.person import Person
@@ -31,8 +32,8 @@ class LocationResolveResponse(BaseModel):
     location_id: str
     display_name: str
     canonical_name: str
-    latitude: float
-    longitude: float
+    latitude: Optional[float]
+    longitude: Optional[float]
     coordinate_precision: str
     country_code: str
     country_name: str
@@ -61,11 +62,11 @@ class PersonWithLocation(BaseModel):
 
 
 class LocationCreateRequest(BaseModel):
-    location_id: str
+    location_id: Optional[str] = None
     canonical_name: str
     display_name: str
-    latitude: float
-    longitude: float
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     country_code: str
     country_name: str
     location_type: str
@@ -253,8 +254,8 @@ async def search_locations(
                 location_id=loc.location_id,
                 display_name=loc.display_name,
                 canonical_name=loc.canonical_name,
-                latitude=float(loc.latitude),
-                longitude=float(loc.longitude),
+                latitude=float(loc.latitude) if loc.latitude is not None else None,
+                longitude=float(loc.longitude) if loc.longitude is not None else None,
                 coordinate_precision=loc.coordinate_precision,
                 country_code=loc.country_code,
                 country_name=loc.country_name,
@@ -348,29 +349,43 @@ async def get_location(
 # Previously: POST /persons/{pfif_id}/locations (removed) 
 
 
+def generate_location_id_from_name(name: str) -> str:
+    """Generate a safe location_id slug from a display name."""
+    s = (name or 'loc').lower()
+    # Remove non-word chars, collapse whitespace to '-', limit length
+    s = re.sub(r"[^a-z0-9\s_-]", '', s)
+    s = re.sub(r"\s+", '-', s).strip('-')[:80]
+    if not s:
+        s = 'loc'
+    return f"LOC-{s}"
+
+
 @router.post("/locations", status_code=status.HTTP_201_CREATED)
 async def create_location(
     request: LocationCreateRequest,
     db: AsyncSession = Depends(get_db_session),
     admin: AdminUser = Depends(require_admin_role("admin"))
 ):
-    """Create a new location (admin-only)."""
+    """Create a new location (admin-only). Latitude/longitude are optional for manual entries."""
+    # Generate a location_id if the admin did not provide one
+    location_id = request.location_id or generate_location_id_from_name(request.display_name)
+
     location = Location(
-        location_id=request.location_id,
+        location_id=location_id,
         canonical_name=request.canonical_name,
         display_name=request.display_name,
-        latitude=request.latitude,
-        longitude=request.longitude,
+        latitude=request.latitude if request.latitude is not None else None,
+        longitude=request.longitude if request.longitude is not None else None,
         country_code=request.country_code,
         country_name=request.country_name,
         admin1_name=request.admin1_name,
         locality=request.locality,
         location_type=request.location_type,
-        coordinate_precision=request.coordinate_precision
+        coordinate_precision=request.coordinate_precision or 'approximate'
     )
     db.add(location)
     await db.commit()
-    return {"location_id": request.location_id}
+    return {"location_id": location_id}
 
 
 @router.patch("/locations/{location_id}")

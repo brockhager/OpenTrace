@@ -38,10 +38,10 @@ class Location(Base):
     short_name = Column(String(100),
                        comment="LA (optional abbreviation)")
     
-    # Geographic coordinates (WGS84)
-    latitude = Column(Numeric(10, 8), nullable=False,
+    # Geographic coordinates (WGS84) — allow nullable for manual entries without exact coords
+    latitude = Column(Numeric(10, 8), nullable=True,
                      comment="Decimal degrees: 34.052235")
-    longitude = Column(Numeric(11, 8), nullable=False,
+    longitude = Column(Numeric(11, 8), nullable=True,
                       comment="Decimal degrees: -118.243683")
     coordinate_precision = Column(String(20), default="approximate",
                                  comment="exact, approximate, region, country")
@@ -107,8 +107,22 @@ class Location(Base):
 
     @property
     def coordinates(self) -> tuple:
-        """Return coordinates as (lat, lng) tuple."""
+        """Return coordinates as (lat, lng) tuple or (None, None) when missing."""
+        if self.latitude is None or self.longitude is None:
+            return (None, None)
         return (float(self.latitude), float(self.longitude))
+
+    def distance_to(self, other_lat: float, other_lng: float) -> float:
+        """Calculate distance to another point in kilometers using Haversine formula.
+
+        Raises ValueError when this location does not have coordinates.
+        """
+        if self.latitude is None or self.longitude is None:
+            raise ValueError("Location does not have coordinates")
+        return self._haversine_distance(
+            float(self.latitude), float(self.longitude),
+            other_lat, other_lng
+        )
 
     @property
     def full_address(self) -> str:
@@ -158,8 +172,8 @@ class Location(Base):
             "location_id": self.location_id,
             "display_name": self.display_name,
             "canonical_name": self.canonical_name,
-            "latitude": float(self.latitude),
-            "longitude": float(self.longitude),
+            "latitude": float(self.latitude) if self.latitude is not None else None,
+            "longitude": float(self.longitude) if self.longitude is not None else None,
             "coordinate_precision": self.coordinate_precision,
             "country_code": self.country_code,
             "country_name": self.country_name,
@@ -183,8 +197,8 @@ class Location(Base):
             "display_name": self.display_name,
             "canonical_name": self.canonical_name,
             "short_name": self.short_name,
-            "latitude": float(self.latitude),
-            "longitude": float(self.longitude),
+            "latitude": float(self.latitude) if self.latitude is not None else None,
+            "longitude": float(self.longitude) if self.longitude is not None else None,
             "coordinate_precision": self.coordinate_precision,
             "country_code": self.country_code,
             "country_name": self.country_name,
