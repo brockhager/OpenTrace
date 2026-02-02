@@ -284,7 +284,7 @@ function renderRow(p){
   
   return `
     <div class="card">
-      <span class="card-id">${escapeHtml(id)}</span>
+      <span class="card-id">${escapeHtml(humanId(id))}</span>
       <h4>${escapeHtml(displayName)}</h4>
       <p>${escapeHtml(location)} — ${escapeHtml(author)}</p>
       <p>
@@ -443,7 +443,7 @@ if (loadPersonsBtn) {
         return `
         <div class="card">
           <div class="card-left">
-            <span class="card-id">${escapeHtml(p.pfif_id)}</span>
+            <span class="card-id">${escapeHtml(humanId(p.pfif_id))}</span>
             <h4>${escapeHtml(displayName)}</h4>
             <p class="meta">Status: ${escapeHtml(p.status)} | Confirmed: ${p.is_confirmed ? 'Yes' : 'No'}</p>
           </div>
@@ -482,7 +482,7 @@ if (loadLocationsBtn) {
       adminLocationsList.innerHTML = filteredLocations.map(loc => `
         <div class="card">
           <div class="card-left">
-            <span class="card-id">${escapeHtml(loc.location_id)}</span>
+            <span class="card-id">${escapeHtml(humanId(loc.location_id))}</span>
             <h4>${escapeHtml(loc.display_name)}</h4>
             <p class="meta">${escapeHtml(loc.canonical_name)}</p>
           </div>
@@ -520,7 +520,7 @@ if (loadEventsBtn) {
       adminEventsList.innerHTML = filteredEvents.map(evt => `
         <div class="card">
           <div class="card-left">
-            <span class="card-id">${escapeHtml(evt.event_id)}</span>
+            <span class="card-id">${escapeHtml(humanId(evt.event_id))}</span>
             <h4>${escapeHtml(evt.name || evt.event_type)}</h4>
             <p class="meta">${escapeHtml(evt.event_timestamp || '')}</p>
           </div>
@@ -558,7 +558,7 @@ if (loadSourcesBtn) {
       adminSourcesList.innerHTML = filteredSources.map(src => `
         <div class="card">
           <div class="card-left">
-            <span class="card-id">${escapeHtml(src.source_id)}</span>
+            <span class="card-id">${escapeHtml(humanId(src.source_id))}</span>
             <h4>${escapeHtml(src.source_name)}</h4>
             <p class="meta">${escapeHtml(src.source_type)} | ${escapeHtml(src.source_category)}</p>
           </div>
@@ -661,7 +661,7 @@ function renderCard(p) {
   const pfif = encodeURIComponent(p.pfif_id);
   return `
     <article class="card">
-      <span class="card-id">${escapeHtml(p.pfif_id || '')}</span>
+      <span class="card-id">${escapeHtml(humanId(p.pfif_id || ''))}</span>
       <h3>${escapeHtml(name)} <span class="meta">(${p.age_at_disappearance || '—'}, ${p.sex || '—'})</span></h3>
       <p><strong>Status:</strong> ${escapeHtml(p.status)}</p>
       <p class="meta">Source: ${escapeHtml(p.primary_source || 'Unknown')}</p>
@@ -694,6 +694,12 @@ function normalizeName(s){
     return tokens.join('');
   }
   return out;
+}
+
+// Normalize PFIF-style IDs for display by stripping the opentrace.org prefix
+function humanId(id) {
+  if (id === null || typeof id === 'undefined') return id;
+  return String(id).replace(/^opentrace\.org\/?/, '');
 }
 
 // Quick search on load if ?q= is present
@@ -772,7 +778,7 @@ if (locationsForm) {
         const locId = encodeURIComponent(loc.location_id);
         return `
           <article class="card">
-            <span class="card-id">${escapeHtml(loc.location_id)}</span>
+            <span class="card-id">${escapeHtml(humanId(loc.location_id))}</span>
             <h3>${escapeHtml(loc.display_name)}</h3>
             <p class="meta">${escapeHtml(loc.canonical_name)}</p>
             <p><strong>Type:</strong> ${escapeHtml(loc.location_type)}</p>
@@ -810,11 +816,11 @@ async function loadEvents(params = {}) {
       const eventId = encodeURIComponent(event.event_id);
       return `
         <article class="card">
-          <span class="card-id">${escapeHtml(event.event_id)}</span>
+          <span class="card-id">${escapeHtml(humanId(event.event_id))}</span>
           <h3>${escapeHtml(event.name || 'Event')}</h3>
           <p><strong>Type:</strong> ${escapeHtml(event.event_type)}</p>
           <p><strong>Timestamp:</strong> ${escapeHtml(event.event_timestamp || '—')}</p>
-          <p class="meta">Person: ${escapeHtml(event.person_id || '—')} · Location: ${escapeHtml(event.location_id || '—')}</p>
+          <p class="meta">Person: ${escapeHtml(humanId(event.person_id) || '—')} · Location: ${escapeHtml(humanId(event.location_id) || '—')}</p>
           <p><a href="/event-detail.html?id=${eventId}">View details</a></p>
           ${event.source_url ? `<p><strong>Source:</strong> <a href="${escapeHtml(event.source_url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(event.source_url)}</a> ${event.source_type ? `<em>(${escapeHtml(event.source_type)})</em>` : ''}</p>` : ''}
         </article>
@@ -861,7 +867,7 @@ async function loadSources(params = {}) {
     sourcesStatus.textContent = '';
     sourcesResults.innerHTML = sources.map(source => `
       <article class="card">
-        <span class="card-id">${escapeHtml(source.source_id)}</span>
+        <span class="card-id">${escapeHtml(humanId(source.source_id))}</span>
         <h3>${escapeHtml(source.source_name)}</h3>
         <p><strong>Code:</strong> ${escapeHtml(source.source_code)}</p>
         <p><strong>Type:</strong> ${escapeHtml(source.source_type)} · ${escapeHtml(source.source_category)}</p>
@@ -920,7 +926,7 @@ async function loadPersonDetail() {
       personNameEl.textContent = personName;
     }
     if (personIdEl) {
-      personIdEl.textContent = escapeHtml(person.pfif_id || id);
+      personIdEl.textContent = escapeHtml(humanId(person.pfif_id || id));
     }
 
     // Try to fetch locations and events (these might fail if person has none)
@@ -945,7 +951,7 @@ async function loadPersonDetail() {
     // Render view mode with an optional Edit button for authenticated users
     personDetailEl.innerHTML = `
       <div class="card">
-        <span class="card-id">${escapeHtml(person.pfif_id || id)}</span>
+        <span class="card-id">${escapeHtml(humanId(person.pfif_id || id))}</span>
         <h2 id="personHeader">${escapeHtml(person.given_name || '')} ${escapeHtml(person.family_name || '')}${confirmedBadge}</h2>
         <div class="person-actions"><button id="editPersonBtn" class="approve">Edit</button></div>
       </div>
@@ -1172,7 +1178,7 @@ async function loadEventDetail() {
       </div>
       <p><strong>Type:</strong> ${escapeHtml(event.event_type || '—')}</p>
       <p><strong>Timestamp:</strong> ${escapeHtml(event.event_timestamp || '—')}</p>
-      <p><strong>Person:</strong> ${escapeHtml(event.person_id || '—')}</p>
+      <p><strong>Person:</strong> ${escapeHtml(humanId(event.person_id) || '—')}</p>
       <p><strong>Location:</strong> ${escapeHtml(event.location_id || '—')}</p>
       <p><strong>Confidence:</strong> ${escapeHtml(event.confidence || '—')}</p>
       <p><strong>Visibility:</strong> ${escapeHtml(event.visibility || '—')}</p>
