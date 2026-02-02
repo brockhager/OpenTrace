@@ -13,6 +13,7 @@ from datetime import datetime
 
 from db.session import get_db_session
 from models.person import Person
+from api.models import AuditLog
 from auth.deps import require_admin_role, optional_admin
 from auth.models import AdminUser
 
@@ -128,8 +129,26 @@ async def update_person(
     person = result.scalar_one_or_none()
     if not person:
         raise HTTPException(status_code=404, detail="Person not found")
-    for key, value in request.model_dump(exclude_unset=True).items():
+    changed = request.model_dump(exclude_unset=True)
+
+    # Capture original confirmation state for audit logging if present
+    orig_confirmed = person.is_confirmed
+
+    for key, value in changed.items():
         setattr(person, key, value)
+
+    # If confirmation state changed, write an audit log entry
+    if 'is_confirmed' in changed and changed['is_confirmed'] is not None and changed['is_confirmed'] != orig_confirmed:
+        actor = getattr(admin, 'email', 'system') if admin else 'system'
+        details = {
+            'old_is_confirmed': orig_confirmed,
+            'new_is_confirmed': changed['is_confirmed'],
+            'pfif_id': pfif_id
+        }
+        # Person uses `pfif_id` as primary key (string). AuditLog.target_id is UUID, so store the pfif_id in details instead.
+        audit = AuditLog(action='person_confirmation_changed', actor_id=actor, target_id=None, details=details)
+        db.add(audit)
+
     await db.commit()
     return {"message": "Person updated"}
 

@@ -144,14 +144,15 @@ if (clearLocationBtn) {
 }
 
 // Admin functionality
-let token = sessionStorage.getItem('opentrace_token') || null;
+// Token can be stored in localStorage to persist across tabs; fallback to sessionStorage for compatibility
+let token = localStorage.getItem('opentrace_token') || sessionStorage.getItem('opentrace_token') || null;
 const loginForm = document.getElementById('loginForm');
 const loginStatus = document.getElementById('loginStatus');
 const reviewSection = document.getElementById('reviewSection');
 const profilesEl = document.getElementById('profiles');
 
 function getAuthHeaders() {
-  const t = sessionStorage.getItem('opentrace_token');
+  const t = localStorage.getItem('opentrace_token') || sessionStorage.getItem('opentrace_token');
   if (!t) return {};
   return { 'Authorization': 'Bearer ' + t };
 }
@@ -218,7 +219,15 @@ if (loginForm) {
       if (!res.ok) throw new Error('Login failed');
       const data = await res.json();
       token = data.access_token;
+      // Persist in localStorage so other tabs can reuse the token, keep sessionStorage for backward compatibility
+      localStorage.setItem('opentrace_token', token);
       sessionStorage.setItem('opentrace_token', token);
+      // If login was initiated with a `next` query param, navigate back to that page so editing can continue
+      const next = new URLSearchParams(window.location.search).get('next');
+      if (next) {
+        window.location.href = decodeURIComponent(next);
+        return;
+      }
       loginStatus.textContent = 'Signed in';
       document.getElementById('loginSection').style.display = 'none';
       reviewSection.style.display = 'block';
@@ -898,7 +907,7 @@ async function loadPersonDetail() {
   personStatusEl.textContent = 'Loading...';
   try {
     // Try to fetch person details (works for both confirmed and unconfirmed if admin)
-    const token = sessionStorage.getItem('opentrace_token');
+    const token = localStorage.getItem('opentrace_token') || sessionStorage.getItem('opentrace_token');
     const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
     const personPayload = await fetchJson(`/api/persons/${encodeURIComponent(id)}`, { headers });
     const person = personPayload.person || {};
@@ -977,10 +986,11 @@ async function loadPersonDetail() {
     const editBtn = document.getElementById('editPersonBtn');
     if (editBtn) {
       editBtn.addEventListener('click', async () => {
-        const currentToken = sessionStorage.getItem('opentrace_token');
+        const currentToken = localStorage.getItem('opentrace_token') || sessionStorage.getItem('opentrace_token');
         if (!currentToken) {
           if (confirm('You must sign in as an admin to edit this profile. Open Admin login page?')) {
-            window.location.href = '/admin.html';
+            // Open admin page in this tab so login will set localStorage token and allow returning to edit
+            window.location.href = `/admin.html?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
           }
           return;
         }
