@@ -2,7 +2,7 @@
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select, update, delete, func
 from pydantic import BaseModel
 from typing import Optional
 
@@ -64,7 +64,13 @@ class AdminActionRequest(BaseModel):
 
 @router.post("/login")
 async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(get_db_session)):
-    result = await db.execute(select(AdminUser).where(AdminUser.email == request.email, AdminUser.is_active == True))
+    normalized_email = (request.email or "").strip().lower()
+    result = await db.execute(
+        select(AdminUser).where(
+            func.lower(AdminUser.email) == normalized_email,
+            AdminUser.is_active == True
+        )
+    )
     user = result.scalar_one_or_none()
     success = False
     pw_ok = False
@@ -81,7 +87,7 @@ async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(
         access_token = None
 
     # Log verification result for debugging (do not log password)
-    logger.info("Admin login verification", extra={"email": request.email, "verify_ok": pw_ok, "success": success})
+    logger.info("Admin login verification", extra={"email": normalized_email, "user_found": user is not None, "verify_ok": pw_ok, "success": success})
 
     # Log attempt
     log_entry = IPLookupLog(
@@ -96,7 +102,7 @@ async def login(request: LoginRequest, req: Request, db: AsyncSession = Depends(
     logger.info("Admin login attempt", extra={
         "ip": req.client.host if req.client else "unknown",
         "user_agent": req.headers.get("user-agent", ""),
-        "email": request.email,
+        "email": normalized_email,
         "success": success,
         "action": "admin_login"
     })
