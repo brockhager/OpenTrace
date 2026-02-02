@@ -98,7 +98,9 @@ class Person(Base):
             "sex": self.sex,
             "status": self.status,
             "date_last_seen": self.date_last_seen.isoformat() if self.date_last_seen else None,
-            "primary_source": self.primary_source
+            "primary_source": self.primary_source,
+            # Include source_url for public detail pages so users can follow the original record/tip line
+            "source_url": self.source_url
         }
 
     def to_admin_dict(self):
