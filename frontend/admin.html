@@ -80,6 +80,43 @@
       </section>
 
       <section class="admin-section">
+        <h3>🔐 Admin Users</h3>
+        <p class="form-note">Manage moderator accounts: create users, reset passwords, deactivate or hard-delete accounts.</p>
+        <div style="display:flex; gap:1.5rem; align-items:flex-start;">
+          <div style="flex:1; min-width:280px;">
+            <button id="loadAdminsBtn" style="margin-bottom:8px; width:100%;">Load Admin Users</button>
+            <div id="adminUsersList" class="entity-grid">No admins loaded</div>
+          </div>
+          <div style="flex:1; min-width:280px;">
+            <form id="createAdminForm" class="form-grid">
+              <h4>Create Admin</h4>
+              <label>Email <input id="createAdminEmail" type="email" required /></label>
+              <label>Password <input id="createAdminPassword" type="password" required /></label>
+              <label>Role <input id="createAdminRole" type="text" value="admin" /></label>
+              <button type="submit">Create Admin</button>
+            </form>
+            <div id="createAdminStatus" class="status"></div>
+
+            <form id="resetAdminForm" class="form-grid" style="margin-top:12px;">
+              <h4>Reset Password</h4>
+              <label>Email <input id="resetAdminEmail" type="email" required /></label>
+              <label>New Password <input id="resetAdminPassword" type="password" required /></label>
+              <button type="submit">Reset Password</button>
+            </form>
+            <div id="resetAdminStatus" class="status"></div>
+
+            <form id="deleteAdminForm" class="form-grid" style="margin-top:12px;">
+              <h4>Delete Admin</h4>
+              <label>Email <input id="deleteAdminEmail" type="email" required /></label>
+              <label style="display:flex; align-items:center; gap:0.5rem;"><input id="deleteAdminHard" type="checkbox" /> Hard delete (irreversible)</label>
+              <button type="submit" class="danger">Delete Admin</button>
+            </form>
+            <div id="deleteAdminStatus" class="status"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-section">
         <h3>🌐 Generic URL Scraper</h3>
         <p class="form-note">Paste any URL of a missing person page (any website) to extract and import data</p>
         <form id="genericUrlScrapeForm" class="form-grid">

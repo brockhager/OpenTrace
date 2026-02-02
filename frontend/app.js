@@ -399,6 +399,192 @@ if (profilesEl) {
 
 // Admin entity management
 const loadPersonsBtn = document.getElementById('loadPersonsBtn');
+// Admin users management
+const loadAdminsBtn = document.getElementById('loadAdminsBtn');
+const adminUsersList = document.getElementById('adminUsersList');
+const createAdminForm = document.getElementById('createAdminForm');
+const createAdminStatus = document.getElementById('createAdminStatus');
+const resetAdminForm = document.getElementById('resetAdminForm');
+const resetAdminStatus = document.getElementById('resetAdminStatus');
+const deleteAdminForm = document.getElementById('deleteAdminForm');
+const deleteAdminStatus = document.getElementById('deleteAdminStatus');
+
+async function loadAdmins() {
+  if (!adminUsersList) return;
+  adminUsersList.innerHTML = 'Loading...';
+  try {
+    const payload = await fetchJson('/admin/admins', { headers: getAuthHeaders() });
+    const admins = payload.admins || [];
+    if (!admins.length) {
+      adminUsersList.innerHTML = '<em>No admin users found</em>';
+      return;
+    }
+    adminUsersList.innerHTML = admins.map(a => `
+      <div class="card">
+        <div class="card-left">
+          <span class="card-id">${escapeHtml(a.email)}</span>
+          <h4>${escapeHtml(a.email)}</h4>
+          <p class="meta">Role: ${escapeHtml(a.role)} | Active: ${a.is_active ? 'Yes' : 'No'}</p>
+        </div>
+        <div class="card-actions">
+          <button class="small reset-admin" data-email="${encodeURIComponent(a.email)}">Reset PW</button>
+          <button class="small deactivate-admin" data-email="${encodeURIComponent(a.email)}">Deactivate</button>
+          <button class="small hard-delete-admin" data-email="${encodeURIComponent(a.email)}">Hard Delete</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (err) {
+    console.error('Load admins error:', err);
+    adminUsersList.innerHTML = '<em>Failed to load admins</em>';
+  }
+}
+
+if (loadAdminsBtn) {
+  loadAdminsBtn.addEventListener('click', async () => {
+    await loadAdmins();
+  });
+}
+
+if (createAdminForm) {
+  createAdminForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('createAdminEmail').value.trim();
+    const password = document.getElementById('createAdminPassword').value;
+    const role = document.getElementById('createAdminRole').value.trim() || 'admin';
+    createAdminStatus.textContent = 'Creating...';
+
+    try {
+      const res = await fetch('/admin/admins', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, getAuthHeaders()),
+        body: JSON.stringify({ email, password, role })
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Create failed');
+      }
+      createAdminStatus.textContent = 'Created';
+      createAdminForm.reset();
+      await loadAdmins();
+    } catch (err) {
+      console.error('Create admin error:', err);
+      createAdminStatus.textContent = `Create failed: ${err.message}`;
+    }
+  });
+}
+
+if (resetAdminForm) {
+  resetAdminForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('resetAdminEmail').value.trim();
+    const password = document.getElementById('resetAdminPassword').value;
+    resetAdminStatus.textContent = 'Resetting...';
+
+    try {
+      const res = await fetch('/admin/admins/password', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, getAuthHeaders()),
+        body: JSON.stringify({ email, password })
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Reset failed');
+      }
+      resetAdminStatus.textContent = 'Password reset';
+      resetAdminForm.reset();
+      await loadAdmins();
+    } catch (err) {
+      console.error('Reset admin error:', err);
+      resetAdminStatus.textContent = `Reset failed: ${err.message}`;
+    }
+  });
+}
+
+if (deleteAdminForm) {
+  deleteAdminForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('deleteAdminEmail').value.trim();
+    const hard = document.getElementById('deleteAdminHard').checked;
+    if (!confirm(`Are you sure you want to ${hard ? 'hard delete' : 'deactivate'} ${email}?`)) return;
+    deleteAdminStatus.textContent = 'Deleting...';
+
+    try {
+      const res = await fetch('/admin/admins/delete', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, getAuthHeaders()),
+        body: JSON.stringify({ email, hard })
+      });
+      if (!res.ok) {
+        const txt = await res.text();
+        throw new Error(txt || 'Delete failed');
+      }
+      deleteAdminStatus.textContent = 'Deleted';
+      deleteAdminForm.reset();
+      await loadAdmins();
+    } catch (err) {
+      console.error('Delete admin error:', err);
+      deleteAdminStatus.textContent = `Delete failed: ${err.message}`;
+    }
+  });
+}
+
+// Click handlers for list actions
+adminUsersList?.addEventListener('click', async (e) => {
+  if (e.target.classList.contains('reset-admin')) {
+    const email = decodeURIComponent(e.target.dataset.email);
+    const pw = prompt(`Enter new password for ${email}`);
+    if (!pw) return;
+    try {
+      const res = await fetch('/admin/admins/password', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, getAuthHeaders()),
+        body: JSON.stringify({ email, password: pw })
+      });
+      if (!res.ok) throw new Error('Reset failed');
+      alert('Password reset');
+      await loadAdmins();
+    } catch (err) {
+      console.error('Reset admin error:', err);
+      alert(`Reset failed: ${err.message}`);
+    }
+  }
+
+  if (e.target.classList.contains('deactivate-admin')) {
+    const email = decodeURIComponent(e.target.dataset.email);
+    if (!confirm(`Deactivate ${email}?`)) return;
+    try {
+      const res = await fetch('/admin/admins/delete', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, getAuthHeaders()),
+        body: JSON.stringify({ email, hard: false })
+      });
+      if (!res.ok) throw new Error('Deactivate failed');
+      alert('Deactivated');
+      await loadAdmins();
+    } catch (err) {
+      console.error('Deactivate admin error:', err);
+      alert(`Deactivate failed: ${err.message}`);
+    }
+  }
+
+  if (e.target.classList.contains('hard-delete-admin')) {
+    const email = decodeURIComponent(e.target.dataset.email);
+    if (!confirm(`Hard delete ${email}? This is irreversible.`)) return;
+    try {
+      const res = await fetch('/admin/admins/delete', {
+        method: 'POST',
+        headers: Object.assign({'Content-Type': 'application/json'}, getAuthHeaders()),
+        body: JSON.stringify({ email, hard: true })
+      });
+      if (!res.ok) throw new Error('Hard delete failed');
+      alert('Hard deleted');
+      await loadAdmins();
+    } catch (err) {
+      console.error('Hard delete admin error:', err);
+      alert(`Hard delete failed: ${err.message}`);
+    }
+  }
+});
 const loadLocationsBtn = document.getElementById('loadLocationsBtn');
 const loadEventsBtn = document.getElementById('loadEventsBtn');
 const loadSourcesBtn = document.getElementById('loadSourcesBtn');
