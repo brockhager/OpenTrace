@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends, HTTPException, status, BackgroundTasks, Request
-from fastapi.responses import JSONResponse, FileResponse
+from fastapi.responses import JSONResponse, FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from typing import List, Optional
@@ -316,8 +316,12 @@ async def get_sources(db: AsyncSession = Depends(get_db_session)):
 
 @app.get("/favicon.ico")
 async def favicon():
-    """Return 404 for favicon requests (API-only app)."""
-    raise HTTPException(status_code=404, detail="Not found")
+    """Serve a placeholder favicon until a real one is provided."""
+    path = "frontend/favicon.svg"
+    if os.path.exists(path):
+        return FileResponse(path, media_type="image/svg+xml")
+    # If the placeholder is missing, return 204 No Content to avoid 404 noise
+    return PlainTextResponse("", status_code=204)
 
 # Include location router
 from api.location import router as location_router
