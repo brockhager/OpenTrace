@@ -1492,6 +1492,7 @@ if (pdfScrapeForm) {
 }
 
 const namusScanForm = document.getElementById('namusScanForm');
+const namusScrapeForm = document.getElementById('namusScrapeForm');
 const namusStatus = document.getElementById('namusStatus');
 
 if (namusScrapeForm) {
