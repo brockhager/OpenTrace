@@ -52,7 +52,12 @@
               <input type="checkbox" id="showUnconfirmedPersons" />
               Show unconfirmed
             </label>
-            <button id="loadPersonsBtn" style="margin-bottom: 1rem; width: 100%;">Load All Persons</button>
+            <button id="loadPersonsBtn" style="margin-bottom: 0.5rem; width: 100%;">Load All Persons</button>
+            <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+              <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="selectAllPersons" /> Select all</label>
+              <button id="deleteSelectedPersonsBtn" class="danger">Delete Selected</button>
+              <div id="adminPersonsStatus" class="status" style="margin-left:8px;"></div>
+            </div>
             <div id="adminPersonsList" class="entity-grid"></div>
           </div>
 
@@ -62,7 +67,12 @@
               <input type="checkbox" id="showUnconfirmedLocations" />
               Show unconfirmed
             </label>
-            <button id="loadLocationsBtn" style="margin-bottom: 1rem; width: 100%;">Load All Locations</button>
+            <button id="loadLocationsBtn" style="margin-bottom: 0.5rem; width: 100%">Load All Locations</button>
+            <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+              <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="selectAllLocations" /> Select all</label>
+              <button id="deleteSelectedLocationsBtn" class="danger">Delete Selected</button>
+              <div id="adminLocationsStatus" class="status" style="margin-left:8px;"></div>
+            </div>
             <div id="adminLocationsList" class="entity-grid"></div>
           </div>
 
@@ -72,7 +82,12 @@
               <input type="checkbox" id="showUnconfirmedEvents" />
               Show unconfirmed
             </label>
-            <button id="loadEventsBtn" style="margin-bottom: 1rem; width: 100%;">Load All Events</button>
+            <button id="loadEventsBtn" style="margin-bottom: 0.5rem; width: 100%">Load All Events</button>
+            <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+              <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="selectAllEvents" /> Select all</label>
+              <button id="deleteSelectedEventsBtn" class="danger">Delete Selected</button>
+              <div id="adminEventsStatus" class="status" style="margin-left:8px;"></div>
+            </div>
             <div id="adminEventsList" class="entity-grid"></div>
           </div>
 
@@ -82,7 +97,12 @@
               <input type="checkbox" id="showUnconfirmedSources" />
               Show unconfirmed
             </label>
-            <button id="loadSourcesBtn" style="margin-bottom: 1rem; width: 100%;">Load All Sources</button>
+            <button id="loadSourcesBtn" style="margin-bottom: 0.5rem; width: 100%">Load All Sources</button>
+            <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.5rem;">
+              <label style="display:flex; align-items:center; gap:0.5rem;"><input type="checkbox" id="selectAllSources" /> Select all</label>
+              <button id="deleteSelectedSourcesBtn" class="danger">Delete Selected</button>
+              <div id="adminSourcesStatus" class="status" style="margin-left:8px;"></div>
+            </div>
             <div id="adminSourcesList" class="entity-grid"></div>
           </div>
         </div>

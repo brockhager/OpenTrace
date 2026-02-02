@@ -654,6 +654,7 @@ if (loadPersonsBtn) {
         const displayName = normalizeName(`${p.given_name || ''} ${p.family_name || ''}`) || 'Unnamed';
         return `
         <div class="card">
+          <input type="checkbox" class="entity-select" data-entity="person" data-id="${encodeURIComponent(p.pfif_id)}" style="position:absolute; right:8px; top:8px;" />
           <div class="card-left">
             <span class="card-id">${escapeHtml(humanId(p.pfif_id))}</span>
             <h4>${escapeHtml(displayName)}</h4>
@@ -694,6 +695,7 @@ if (loadLocationsBtn) {
       }
       adminLocationsList.innerHTML = filteredLocations.map(loc => `
         <div class="card">
+          <input type="checkbox" class="entity-select" data-entity="location" data-id="${encodeURIComponent(loc.location_id)}" style="position:absolute; right:8px; top:8px;" />
           <div class="card-left">
             <span class="card-id">${escapeHtml(humanId(loc.location_id))}</span>
             <h4>${escapeHtml(loc.display_name)}</h4>
@@ -733,6 +735,7 @@ if (loadEventsBtn) {
       }
       adminEventsList.innerHTML = filteredEvents.map(evt => `
         <div class="card">
+          <input type="checkbox" class="entity-select" data-entity="event" data-id="${encodeURIComponent(evt.event_id)}" style="position:absolute; right:8px; top:8px;" />
           <div class="card-left">
             <span class="card-id">${escapeHtml(humanId(evt.event_id))}</span>
             <h4>${escapeHtml(evt.name || evt.event_type)}</h4>
@@ -771,6 +774,7 @@ if (loadSourcesBtn) {
       }
       adminSourcesList.innerHTML = filteredSources.map(src => `
         <div class="card">
+          <input type="checkbox" class="entity-select" data-entity="source" data-id="${encodeURIComponent(src.source_id)}" style="position:absolute; right:8px; top:8px;" />
           <div class="card-left">
             <span class="card-id">${escapeHtml(humanId(src.source_id))}</span>
             <h4>${escapeHtml(src.source_name)}</h4>
@@ -868,6 +872,87 @@ document.addEventListener('click', async (e) => {
       alert(`Delete failed: ${err.message}`);
     }
   }
+});
+
+// Select-all handlers
+const selectAllPersons = document.getElementById('selectAllPersons');
+if (selectAllPersons) selectAllPersons.addEventListener('change', (e) => {
+  const checked = e.target.checked;
+  document.querySelectorAll('#adminPersonsList input.entity-select').forEach(i => i.checked = checked);
+});
+const deleteSelectedPersonsBtn = document.getElementById('deleteSelectedPersonsBtn');
+if (deleteSelectedPersonsBtn) deleteSelectedPersonsBtn.addEventListener('click', async () => {
+  const authHeaders = getAuthHeaders();
+  if (!authHeaders || !authHeaders.Authorization) { document.getElementById('adminPersonsStatus').textContent = 'Sign in required'; return; }
+  const selected = Array.from(document.querySelectorAll('#adminPersonsList input.entity-select:checked')).map(i => decodeURIComponent(i.dataset.id));
+  if (!selected.length) { document.getElementById('adminPersonsStatus').textContent = 'No persons selected'; return; }
+  if (!confirm(`Delete ${selected.length} person(s)? This cannot be undone.`)) return;
+  document.getElementById('adminPersonsStatus').textContent = 'Deleting...';
+  const results = await Promise.allSettled(selected.map(id => fetch(`/api/persons/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders })));
+  const succeeded = results.filter(r => r.status === 'fulfilled' && r.value && r.value.ok).length;
+  const failed = results.length - succeeded;
+  document.getElementById('adminPersonsStatus').textContent = `Deleted ${succeeded}, failed ${failed}`;
+  loadPersonsBtn.click();
+});
+
+const selectAllLocations = document.getElementById('selectAllLocations');
+if (selectAllLocations) selectAllLocations.addEventListener('change', (e) => {
+  const checked = e.target.checked;
+  document.querySelectorAll('#adminLocationsList input.entity-select').forEach(i => i.checked = checked);
+});
+const deleteSelectedLocationsBtn = document.getElementById('deleteSelectedLocationsBtn');
+if (deleteSelectedLocationsBtn) deleteSelectedLocationsBtn.addEventListener('click', async () => {
+  const authHeaders = getAuthHeaders();
+  if (!authHeaders || !authHeaders.Authorization) { document.getElementById('adminLocationsStatus').textContent = 'Sign in required'; return; }
+  const selected = Array.from(document.querySelectorAll('#adminLocationsList input.entity-select:checked')).map(i => decodeURIComponent(i.dataset.id));
+  if (!selected.length) { document.getElementById('adminLocationsStatus').textContent = 'No locations selected'; return; }
+  if (!confirm(`Delete ${selected.length} location(s)?`)) return;
+  document.getElementById('adminLocationsStatus').textContent = 'Deleting...';
+  const results = await Promise.allSettled(selected.map(id => fetch(`/api/locations/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders })));
+  const succeeded = results.filter(r => r.status === 'fulfilled' && r.value && r.value.ok).length;
+  const failed = results.length - succeeded;
+  document.getElementById('adminLocationsStatus').textContent = `Deleted ${succeeded}, failed ${failed}`;
+  loadLocationsBtn.click();
+});
+
+const selectAllEvents = document.getElementById('selectAllEvents');
+if (selectAllEvents) selectAllEvents.addEventListener('change', (e) => {
+  const checked = e.target.checked;
+  document.querySelectorAll('#adminEventsList input.entity-select').forEach(i => i.checked = checked);
+});
+const deleteSelectedEventsBtn = document.getElementById('deleteSelectedEventsBtn');
+if (deleteSelectedEventsBtn) deleteSelectedEventsBtn.addEventListener('click', async () => {
+  const authHeaders = getAuthHeaders();
+  if (!authHeaders || !authHeaders.Authorization) { document.getElementById('adminEventsStatus').textContent = 'Sign in required'; return; }
+  const selected = Array.from(document.querySelectorAll('#adminEventsList input.entity-select:checked')).map(i => decodeURIComponent(i.dataset.id));
+  if (!selected.length) { document.getElementById('adminEventsStatus').textContent = 'No events selected'; return; }
+  if (!confirm(`Delete ${selected.length} event(s)?`)) return;
+  document.getElementById('adminEventsStatus').textContent = 'Deleting...';
+  const results = await Promise.allSettled(selected.map(id => fetch(`/api/events/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders })));
+  const succeeded = results.filter(r => r.status === 'fulfilled' && r.value && r.value.ok).length;
+  const failed = results.length - succeeded;
+  document.getElementById('adminEventsStatus').textContent = `Deleted ${succeeded}, failed ${failed}`;
+  loadEventsBtn.click();
+});
+
+const selectAllSources = document.getElementById('selectAllSources');
+if (selectAllSources) selectAllSources.addEventListener('change', (e) => {
+  const checked = e.target.checked;
+  document.querySelectorAll('#adminSourcesList input.entity-select').forEach(i => i.checked = checked);
+});
+const deleteSelectedSourcesBtn = document.getElementById('deleteSelectedSourcesBtn');
+if (deleteSelectedSourcesBtn) deleteSelectedSourcesBtn.addEventListener('click', async () => {
+  const authHeaders = getAuthHeaders();
+  if (!authHeaders || !authHeaders.Authorization) { document.getElementById('adminSourcesStatus').textContent = 'Sign in required'; return; }
+  const selected = Array.from(document.querySelectorAll('#adminSourcesList input.entity-select:checked')).map(i => decodeURIComponent(i.dataset.id));
+  if (!selected.length) { document.getElementById('adminSourcesStatus').textContent = 'No sources selected'; return; }
+  if (!confirm(`Delete ${selected.length} source(s)?`)) return;
+  document.getElementById('adminSourcesStatus').textContent = 'Deleting...';
+  const results = await Promise.allSettled(selected.map(id => fetch(`/api/sources/${encodeURIComponent(id)}`, { method: 'DELETE', headers: authHeaders })));
+  const succeeded = results.filter(r => r.status === 'fulfilled' && r.value && r.value.ok).length;
+  const failed = results.length - succeeded;
+  document.getElementById('adminSourcesStatus').textContent = `Deleted ${succeeded}, failed ${failed}`;
+  loadSourcesBtn.click();
 });
 
 function renderCard(p) {
