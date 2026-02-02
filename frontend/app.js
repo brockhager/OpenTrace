@@ -1176,13 +1176,35 @@ async function loadPersonDetail() {
       </div>
 
       <section class="detail-section">
-        <h3>Locations</h3>
+        <h3>Locations <button id="toggleAddLocationForm" class="btn-sm">+ Add Location</button></h3>
+        <div id="addLocationForm" style="display: none; margin: 1rem 0; padding: 1rem; background: #f9fafb; border-radius: 4px;">
+          <label>Location:<br>
+            <select id="locationSelect" required>
+              <option value="">-- Select a location --</option>
+            </select>
+          </label><br>
+          <label>Event type:<br>
+            <select id="locationEventType">
+              <option value="last_seen">Last Seen</option>
+              <option value="reported_missing">Reported Missing</option>
+              <option value="found">Found</option>
+              <option value="sighting">Sighting</option>
+              <option value="recovery">Recovery</option>
+            </select>
+          </label><br>
+          <label>Event date (optional):<br><input id="locationEventDate" type="date" /></label><br>
+          <label>Description (optional):<br><textarea id="locationEventDesc" rows="2"></textarea></label><br>
+          <button id="saveLocationBtn" class="approve">Add Location</button>
+          <button id="cancelLocationBtn" type="button" class="danger" style="margin-left: 8px;">Cancel</button>
+        </div>
+        <div id="locationsList">
         ${locations.length ? locations.map(loc => `
           <div class="card">
             <p><strong>${escapeHtml(loc.display_name)}</strong></p>
             <p class="meta">${escapeHtml(loc.canonical_name || '')}</p>
           </div>
         `).join('') : '<p class="meta">No locations recorded.</p>'}
+        </div>
       </section>
 
       <section class="detail-section">
@@ -1300,6 +1322,112 @@ async function loadPersonDetail() {
           await loadPersonDetail();
         });
       });
+    }
+
+    // Location form handlers
+    const toggleAddLocationBtn = document.getElementById('toggleAddLocationForm');
+    const addLocationForm = document.getElementById('addLocationForm');
+    const locationSelect = document.getElementById('locationSelect');
+    const saveLocationBtn = document.getElementById('saveLocationBtn');
+    const cancelLocationBtn = document.getElementById('cancelLocationBtn');
+
+    if (toggleAddLocationBtn && addLocationForm) {
+      toggleAddLocationBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        const token = localStorage.getItem('opentrace_token') || sessionStorage.getItem('opentrace_token');
+        if (!token) {
+          if (confirm('You must sign in as an admin to add locations. Open Admin login page?')) {
+            window.location.href = `/admin.html?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+          }
+          return;
+        }
+
+        // Toggle form visibility
+        if (addLocationForm.style.display === 'none') {
+          addLocationForm.style.display = 'block';
+          toggleAddLocationBtn.textContent = '✕ Cancel';
+          // Load locations if not already loaded
+          if (locationSelect.options.length === 1) {
+            await loadLocationsDropdown();
+          }
+        } else {
+          addLocationForm.style.display = 'none';
+          toggleAddLocationBtn.textContent = '+ Add Location';
+        }
+      });
+
+      // Load locations dropdown
+      async function loadLocationsDropdown() {
+        try {
+          const response = await fetchJson('/api/locations?limit=500', { 
+            headers: getAuthHeaders() 
+          });
+          const locs = response.locations || [];
+          locs.forEach(loc => {
+            const option = document.createElement('option');
+            option.value = loc.location_id;
+            option.textContent = loc.display_name;
+            locationSelect.appendChild(option);
+          });
+        } catch (e) {
+          console.error('Failed to load locations:', e);
+          personStatusEl.textContent = 'Failed to load locations.';
+        }
+      }
+
+      // Save location handler
+      if (saveLocationBtn) {
+        saveLocationBtn.addEventListener('click', async (e) => {
+          e.preventDefault();
+          const selectedLocationId = locationSelect.value;
+          const eventType = document.getElementById('locationEventType')?.value || 'last_seen';
+          const eventDate = document.getElementById('locationEventDate')?.value;
+          const eventDesc = document.getElementById('locationEventDesc')?.value;
+
+          if (!selectedLocationId) {
+            personStatusEl.textContent = 'Please select a location.';
+            return;
+          }
+
+          try {
+            const payload = {
+              pfif_id: person.pfif_id || id,
+              location_id: selectedLocationId,
+              event_type: eventType
+            };
+            if (eventDate) payload.event_date = eventDate;
+            if (eventDesc) payload.event_description = eventDesc;
+
+            await fetchJson(`/api/persons/${encodeURIComponent(person.pfif_id || id)}/locations`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+              body: JSON.stringify(payload)
+            });
+            personStatusEl.textContent = 'Location added successfully.';
+            // Clear form and reload
+            setTimeout(async () => {
+              addLocationForm.style.display = 'none';
+              toggleAddLocationBtn.textContent = '+ Add Location';
+              locationSelect.value = '';
+              document.getElementById('locationEventDate').value = '';
+              document.getElementById('locationEventDesc').value = '';
+              await loadPersonDetail();
+            }, 500);
+          } catch (e) {
+            console.error('Failed to add location:', e);
+            personStatusEl.textContent = 'Failed to add location: ' + (e.message || 'Unknown error');
+          }
+        });
+      }
+
+      // Cancel location form handler
+      if (cancelLocationBtn) {
+        cancelLocationBtn.addEventListener('click', (e) => {
+          e.preventDefault();
+          addLocationForm.style.display = 'none';
+          toggleAddLocationBtn.textContent = '+ Add Location';
+        });
+      }
     }
   } catch (err) {
     console.error('Failed to load person:', err);

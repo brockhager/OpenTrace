@@ -512,6 +512,76 @@ async def delete_location(
     return None
 
 
+class PersonLocationCreateRequest(BaseModel):
+    pfif_id: str
+    location_id: str
+    event_type: str = "last_seen"
+    event_date: Optional[str] = None
+    event_description: Optional[str] = None
+
+
+@router.post("/persons/{pfif_id}/locations", status_code=status.HTTP_201_CREATED)
+async def add_person_location(
+    pfif_id: str,
+    request: PersonLocationCreateRequest,
+    admin: AdminUser = Depends(require_admin_role),
+    db: AsyncSession = Depends(get_db_session)
+):
+    """
+    Link a person to a location with event context.
+    Requires admin authentication.
+    
+    Example:
+    POST /api/persons/opentrace.org/person/namus.MP12345/locations
+    {
+      "pfif_id": "opentrace.org/person/namus.MP12345",
+      "location_id": "los-angeles-ca-usa",
+      "event_type": "last_seen",
+      "event_date": "2024-01-15",
+      "event_description": "Seen near downtown"
+    }
+    """
+    try:
+        # Verify person exists
+        result = await db.execute(select(Person).where(Person.pfif_id == pfif_id))
+        person = result.scalar_one_or_none()
+        if not person:
+            raise HTTPException(status_code=404, detail=f"Person not found: {pfif_id}")
+        
+        # Verify location exists
+        result = await db.execute(select(Location).where(Location.location_id == request.location_id))
+        location = result.scalar_one_or_none()
+        if not location:
+            raise HTTPException(status_code=404, detail=f"Location not found: {request.location_id}")
+        
+        # Create person-location link
+        person_location = PersonLocation(
+            pfif_id=pfif_id,
+            location_id=request.location_id,
+            event_type=request.event_type,
+            event_date=request.event_date,
+            event_description=request.event_description
+        )
+        
+        db.add(person_location)
+        await db.commit()
+        
+        return {
+            "id": str(person_location.id),
+            "pfif_id": person_location.pfif_id,
+            "location_id": person_location.location_id,
+            "event_type": person_location.event_type,
+            "display_name": location.display_name
+        }
+    
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=409, detail="Person-location link already exists")
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to link person to location: {str(e)}")
+
+
 @router.get("/reverse-geocode", response_model=LocationResolveResponse)
 async def reverse_geocode(
     lat: float = Query(..., description="Latitude"),
