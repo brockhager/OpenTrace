@@ -571,13 +571,15 @@ if (profilesEl) {
         }
         alert('Profile removed');
         await loadUnconfirmed();
+        const reviewBadge = document.getElementById('reviewBadge');
         if (reviewBadge) reviewBadge.style.display = 'none';
         if (loadPersonsBtn) loadPersonsBtn.click();
-      await loadAdmins();
-    } catch (err) {
-      console.error('Create admin error:', err);
-      createAdminStatus.textContent = `Create failed: ${err.message}`;
+      } catch (err) {
+        console.error('Delete profile error:', err);
+        alert(`Delete failed: ${err.message}`);
+      }
     }
+
   });
 }
 
