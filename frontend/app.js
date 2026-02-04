@@ -255,18 +255,20 @@ if (loginForm) {
   const setupStatus = document.getElementById('setupAdminStatus');
 
   // Check if an admin exists; if not, show setup UI
-  try {
-    const res = await fetch('/admin/exists');
-    if (res.ok) {
-      const payload = await res.json();
-      if (payload && payload.admin_exists === false) {
-        setupBanner.style.display = 'block';
-        setupForm.style.display = 'block';
+  (async function checkAdminExists() {
+    try {
+      const res = await fetch('/admin/exists');
+      if (res.ok) {
+        const payload = await res.json();
+        if (payload && payload.admin_exists === false) {
+          setupBanner.style.display = 'block';
+          setupForm.style.display = 'block';
+        }
       }
+    } catch (err) {
+      // Ignore errors
     }
-  } catch (err) {
-    // Ignore errors
-  }
+  })();
 
   if (setupForm) {
     setupForm.addEventListener('submit', async (e) => {
