@@ -297,6 +297,17 @@ if (loginForm) {
 }
 
 const loginSection = document.getElementById('loginSection');
+
+// Admin users UI elements
+const loadAdminsBtn = document.getElementById('loadAdminsBtn');
+const adminUsersList = document.getElementById('adminUsersList');
+const createAdminForm = document.getElementById('createAdminForm');
+const createAdminStatus = document.getElementById('createAdminStatus');
+const resetAdminForm = document.getElementById('resetAdminForm');
+const resetAdminStatus = document.getElementById('resetAdminStatus');
+const deleteAdminForm = document.getElementById('deleteAdminForm');
+const deleteAdminStatus = document.getElementById('deleteAdminStatus');
+
 if (reviewSection && token && loginSection) {
   loginSection.style.display = 'none';
   reviewSection.style.display = 'block';
