@@ -304,9 +304,9 @@ if (reviewSection && token && loginSection) {
   loadUnconfirmed();
 }
 
-async function loadUnconfirmed(){
+async function loadUnconfirmed(silent=false){
   if (!profilesEl) return;
-  profilesEl.innerHTML = 'Loading...';
+  if (!silent) profilesEl.innerHTML = 'Loading...';
   try {
     // Try new Person endpoint first, fallback to old profile endpoint
     let res = await fetch('/admin/review-persons', { 
@@ -323,7 +323,7 @@ async function loadUnconfirmed(){
         if (reviewSection) reviewSection.style.display = 'none';
         if (loginStatus) loginStatus.textContent = 'Session expired or not authorized — please sign in.';
         profilesEl.innerHTML = '<em>Authentication required — please sign in.</em>';
-        return;
+        return [];
       }
       // Fallback to old endpoint for backward compatibility
       res = await fetch('/admin/review-profiles', { 
@@ -334,13 +334,38 @@ async function loadUnconfirmed(){
     if (!res.ok) throw new Error('Failed to load');
     const data = await res.json();
     const profiles = data.profiles || [];
-    if (profiles.length === 0) {
-      profilesEl.innerHTML = '<em>No unconfirmed profiles</em>';
-      return;
+
+    // Update badge if there are pending items and review tab is not active
+    const reviewBadge = document.getElementById('reviewBadge');
+    const reviewTabActive = document.getElementById('tab-review')?.classList.contains('active');
+    if (profiles.length > 0) {
+      if (!reviewTabActive) {
+        if (reviewBadge) reviewBadge.style.display = 'inline-block';
+        const reviewStatus = document.getElementById('reviewStatus');
+        if (reviewStatus && profiles.length) reviewStatus.textContent = `${profiles.length} awaiting review`;
+      } else {
+        if (reviewBadge) reviewBadge.style.display = 'none';
+        const reviewStatus = document.getElementById('reviewStatus');
+        if (reviewStatus) reviewStatus.textContent = '';
+      }
+    } else {
+      if (reviewBadge) reviewBadge.style.display = 'none';
+      const reviewStatus = document.getElementById('reviewStatus');
+      if (reviewStatus) reviewStatus.textContent = '';
     }
-    profilesEl.innerHTML = profiles.map(p => renderRow(p)).join('');
+
+    if (!silent) {
+      if (profiles.length === 0) {
+        profilesEl.innerHTML = '<em>No unconfirmed profiles</em>';
+      } else {
+        profilesEl.innerHTML = profiles.map(p => renderRow(p)).join('');
+      }
+    }
+
+    return profiles;
   } catch (err) {
-    profilesEl.innerHTML = '<em>Failed to load profiles</em>';
+    if (!silent) profilesEl.innerHTML = '<em>Failed to load profiles</em>';
+    return [];
   }
 }
 
@@ -356,6 +381,14 @@ function initAdminTabs() {
     tabButtons.forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === name);
     });
+
+    // When entering review tab, clear badge and load unconfirmed profiles
+    if (name === 'review') {
+      const reviewBadge = document.getElementById('reviewBadge');
+      if (reviewBadge) reviewBadge.style.display = 'none';
+      // Load unconfirmed items when review tab becomes active
+      if (typeof loadUnconfirmed === 'function') loadUnconfirmed();
+    }
   };
 
   tabButtons.forEach(btn => {
@@ -364,6 +397,61 @@ function initAdminTabs() {
 
   const defaultBtn = document.querySelector('.admin-tab-btn.active') || tabButtons[0];
   if (defaultBtn) activate(defaultBtn.dataset.tab);
+
+  // Periodically poll for new unconfirmed profiles when admin is signed in
+  let reviewPoll = null;
+  let reviewCountPoll = null;
+  function triggerBadgePulse() {
+    const reviewBadge = document.getElementById('reviewBadge');
+    if (!reviewBadge) return;
+    reviewBadge.classList.add('pulse');
+    setTimeout(() => { reviewBadge.classList.remove('pulse'); }, 1500);
+  }
+
+  async function checkUnconfirmedCount(silent = true) {
+    if (!token) return 0;
+    try {
+      const payload = await fetchJson('/admin/unconfirmed-count', { headers: getAuthHeaders() });
+      const count = payload && payload.count ? payload.count : 0;
+      const reviewBadge = document.getElementById('reviewBadge');
+      const reviewTabActive = document.getElementById('tab-review')?.classList.contains('active');
+      if (count > 0 && !reviewTabActive) {
+        if (reviewBadge) {
+          // show and pulse if we're not silent (new notification)
+          const wasHidden = reviewBadge.style.display === 'none' || !reviewBadge.style.display;
+          reviewBadge.style.display = 'inline-block';
+          if (!silent && wasHidden) triggerBadgePulse();
+          reviewBadge.setAttribute('title', `${count} items awaiting review`);
+        }
+      } else {
+        if (reviewBadge) reviewBadge.style.display = 'none';
+      }
+      return count;
+    } catch (e) {
+      return 0;
+    }
+  }
+
+  if (typeof window !== 'undefined') {
+    reviewCountPoll = setInterval(async () => {
+      try {
+        if (!token) return;
+        await checkUnconfirmedCount(true); // silent check every 15s
+      } catch (e) {
+        // ignore polling errors
+      }
+    }, 15000); // every 15s
+
+    // Keep a less-frequent full load for the list
+    reviewPoll = setInterval(async () => {
+      try {
+        if (!token) return;
+        await loadUnconfirmed(true); // silent list check - don't show UI loader
+      } catch (e) {
+        // ignore polling errors
+      }
+    }, 60000); // every 60s
+  }
 }
 
 function renderRow(p){
@@ -465,6 +553,10 @@ if (profilesEl) {
         if (res.ok) {
           alert('Person deleted (soft)');
           await loadUnconfirmed();
+          // Update badge after delete
+          const reviewBadge = document.getElementById('reviewBadge');
+          if (reviewBadge) reviewBadge.style.display = 'none';
+          if (loadPersonsBtn) loadPersonsBtn.click();
           return;
         }
         // If not found on Person table, use takedown for PersonProfile
@@ -479,84 +571,8 @@ if (profilesEl) {
         }
         alert('Profile removed');
         await loadUnconfirmed();
-      } catch (err) {
-        console.error('Delete profile error:', err);
-        alert(`Delete failed: ${err.message}`);
-      }
-      return;
-    }
-
-  });
-}
-
-// Admin entity management
-const loadPersonsBtn = document.getElementById('loadPersonsBtn');
-// Admin users management
-const loadAdminsBtn = document.getElementById('loadAdminsBtn');
-const adminUsersList = document.getElementById('adminUsersList');
-const createAdminForm = document.getElementById('createAdminForm');
-const createAdminStatus = document.getElementById('createAdminStatus');
-const resetAdminForm = document.getElementById('resetAdminForm');
-const resetAdminStatus = document.getElementById('resetAdminStatus');
-const deleteAdminForm = document.getElementById('deleteAdminForm');
-const deleteAdminStatus = document.getElementById('deleteAdminStatus');
-
-async function loadAdmins() {
-  if (!adminUsersList) return;
-  adminUsersList.innerHTML = 'Loading...';
-  try {
-    const payload = await fetchJson('/admin/admins', { headers: getAuthHeaders() });
-    const admins = payload.admins || [];
-    if (!admins.length) {
-      adminUsersList.innerHTML = '<em>No admin users found</em>';
-      return;
-    }
-    adminUsersList.innerHTML = admins.map(a => `
-      <div class="card">
-        <div class="card-left">
-          <span class="card-id">${escapeHtml(a.email)}</span>
-          <h4>${escapeHtml(a.email)}</h4>
-          <p class="meta">Role: ${escapeHtml(a.role)} | Active: ${a.is_active ? 'Yes' : 'No'}</p>
-        </div>
-        <div class="card-actions">
-          <button class="small reset-admin" data-email="${encodeURIComponent(a.email)}">Reset PW</button>
-          <button class="small deactivate-admin" data-email="${encodeURIComponent(a.email)}">Deactivate</button>
-          <button class="small hard-delete-admin" data-email="${encodeURIComponent(a.email)}">Hard Delete</button>
-        </div>
-      </div>
-    `).join('');
-  } catch (err) {
-    console.error('Load admins error:', err);
-    adminUsersList.innerHTML = '<em>Failed to load admins</em>';
-  }
-}
-
-if (loadAdminsBtn) {
-  loadAdminsBtn.addEventListener('click', async () => {
-    await loadAdmins();
-  });
-}
-
-if (createAdminForm) {
-  createAdminForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('createAdminEmail').value.trim();
-    const password = document.getElementById('createAdminPassword').value;
-    const role = document.getElementById('createAdminRole').value.trim() || 'admin';
-    createAdminStatus.textContent = 'Creating...';
-
-    try {
-      const res = await fetch('/admin/admins', {
-        method: 'POST',
-        headers: Object.assign({'Content-Type': 'application/json'}, getAuthHeaders()),
-        body: JSON.stringify({ email, password, role })
-      });
-      if (!res.ok) {
-        const txt = await res.text();
-        throw new Error(txt || 'Create failed');
-      }
-      createAdminStatus.textContent = 'Created';
-      createAdminForm.reset();
+        if (reviewBadge) reviewBadge.style.display = 'none';
+        if (loadPersonsBtn) loadPersonsBtn.click();
       await loadAdmins();
     } catch (err) {
       console.error('Create admin error:', err);
@@ -2125,7 +2141,9 @@ if (personCreateForm) {
         status: normalizedStatus,
         date_last_seen: document.getElementById('personLastSeen').value || null,
         primary_source: primarySource,
-        source_url: document.getElementById('personSourceUrl').value.trim() || null
+        source_url: document.getElementById('personSourceUrl').value.trim() || null,
+        // Admin-created persons are confirmed by default so they appear in public lists
+        is_confirmed: true
       };
       const res = await fetchJson('/api/persons', {
         method: 'POST',

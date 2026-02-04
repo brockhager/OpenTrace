@@ -334,6 +334,29 @@ async def admin_exists(db: AsyncSession = Depends(get_db_session)):
     any_user = result.scalar_one_or_none()
     return {"admin_exists": bool(any_user)}
 
+
+@router.get('/unconfirmed-count', dependencies=[Depends(get_current_admin)])
+async def unconfirmed_count(db: AsyncSession = Depends(get_db_session)):
+    """Return the total number of unconfirmed items across Person and PersonProfile.
+
+    Intended for the admin UI badge to quickly show new items awaiting review.
+    """
+    if db is None:
+        return {"count": 0}
+
+    # Count unconfirmed persons (new Person table)
+    p_stmt = select(func.count()).select_from(Person).where(Person.is_confirmed == False, Person.is_active == True)
+    p_res = await db.execute(p_stmt)
+    persons_count = int(p_res.scalar() or 0)
+
+    # Count unconfirmed legacy profiles
+    pp_stmt = select(func.count()).select_from(PersonProfile).where(PersonProfile.is_confirmed == False)
+    pp_res = await db.execute(pp_stmt)
+    profiles_count = int(pp_res.scalar() or 0)
+
+    total = persons_count + profiles_count
+    return {"count": total}
+
 @router.post("/admins/password", dependencies=[Depends(require_admin_role("admin"))])
 async def reset_admin_password(request: AdminPasswordUpdateRequest, admin: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
     """Reset an admin user's password."""

@@ -41,14 +41,27 @@
 
     <section id="reviewSection" style="display:none;">
       <h3>Unconfirmed Profiles</h3>
-      <div id="profiles"></div>
+      <!-- UNCONFIRMED PROFILES moved to Review tab -->
 
       <!-- Admin tab navigation -->
       <div class="admin-tabs">
+        <button class="admin-tab-btn" data-tab="review">Review <span id="reviewBadge" class="tab-badge" style="display:none;" title="New items awaiting review"></span></button>
         <button class="admin-tab-btn active" data-tab="overview">Overview</button>
         <button class="admin-tab-btn" data-tab="scrapers">Scrapers</button>
         <button class="admin-tab-btn" data-tab="entities">Entities</button>
         <button class="admin-tab-btn" data-tab="users">Admin Users</button>
+      </div>
+
+      <div id="tab-review" class="admin-tab">
+        <section class="admin-section">
+          <h3>🔎 Unconfirmed Profiles</h3>
+          <p class="form-note">Profiles submitted or scraped that require moderator review</p>
+          <div style="display:flex; gap:8px; align-items:center; margin-bottom:8px;">
+            <button id="refreshReviewBtn" class="btn-sm">Refresh</button>
+            <div id="reviewStatus" class="status" style="margin-left:8px;"></div>
+          </div>
+          <div id="profiles"></div>
+        </section>
       </div>
 
       <div id="tab-overview" class="admin-tab active">
