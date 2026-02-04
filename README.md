@@ -46,8 +46,13 @@ A privacy-first missing persons tracing platform that aggregates and searches ve
 
 5. **Create admin user:**
    ```bash
-   python scripts/create_admin.py  # Or manually via psql
+   # Preferred: Create via psql
+   psql -d opentrace_dev -c "INSERT INTO admin_user (email, hashed_password, role) VALUES ('your-admin@example.com', '\$2b\$12\$your_bcrypt_hash_here', 'admin');"
+
+   # Or use the convenience setup endpoint on a fresh install (only allowed when no admin exists):
+   curl -X POST http://localhost:8000/admin/setup -H "Content-Type: application/json" -d '{"email":"your-admin@example.com","password":"YourPasswordHere"}'
    ```
+
 
 6. **Run the application:**
    ```bash

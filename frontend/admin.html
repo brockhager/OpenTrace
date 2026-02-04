@@ -26,6 +26,17 @@
         <button type="submit">Sign in</button>
       </form>
       <div id="loginStatus" class="status" aria-live="polite"></div>
+
+      <div id="setupBanner" style="display:none; margin-top:12px; padding:8px; border:1px solid #ccc; background:#fff7e6;">
+        <strong>No admin account detected.</strong>
+        <p style="margin:6px 0 0 0;">You can create the first admin account here (allowed only when no admin exists).</p>
+        <form id="setupAdminForm" class="form-grid" style="margin-top:8px; display:none;">
+          <label>Email <input id="setupAdminEmail" type="email" required /></label>
+          <label>Password <input id="setupAdminPassword" type="password" required /></label>
+          <button type="submit">Create Initial Admin</button>
+        </form>
+        <div id="setupAdminStatus" class="status"></div>
+      </div>
     </div>
 
     <section id="reviewSection" style="display:none;">

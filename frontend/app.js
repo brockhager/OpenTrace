@@ -199,11 +199,20 @@ async function fetchJson(url, options = {}) {
     const message = await res.text();
     const err = new Error(message || 'Request failed');
     try { err.status = res.status; } catch (e) {}
+    // Clear auth on 401/403 so UX returns to login state
+    if (res.status === 401 || res.status === 403) {
+      localStorage.removeItem('opentrace_token');
+      sessionStorage.removeItem('opentrace_token');
+      token = null;
+      if (loginSection) loginSection.style.display = 'block';
+      if (reviewSection) reviewSection.style.display = 'none';
+      if (loginStatus) loginStatus.textContent = 'Session expired or not authorized — please sign in.';
+    }
     throw err;
   }
   if (res.status === 204) return null;
   return res.json();
-}
+} 
 
 if (loginForm) {
   loginForm.addEventListener('submit', async (e) => {
@@ -239,6 +248,50 @@ if (loginForm) {
       loginStatus.textContent = 'Sign-in failed — check credentials';
     }
   });
+
+  // Setup admin form: convenience for fresh installs
+  const setupForm = document.getElementById('setupAdminForm');
+  const setupBanner = document.getElementById('setupBanner');
+  const setupStatus = document.getElementById('setupAdminStatus');
+
+  // Check if an admin exists; if not, show setup UI
+  try {
+    const res = await fetch('/admin/exists');
+    if (res.ok) {
+      const payload = await res.json();
+      if (payload && payload.admin_exists === false) {
+        setupBanner.style.display = 'block';
+        setupForm.style.display = 'block';
+      }
+    }
+  } catch (err) {
+    // Ignore errors
+  }
+
+  if (setupForm) {
+    setupForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('setupAdminEmail').value.trim();
+      const password = document.getElementById('setupAdminPassword').value;
+      setupStatus.textContent = 'Creating admin...';
+      try {
+        const res = await fetch('/admin/setup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ email, password })
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          throw new Error(txt || 'Setup failed');
+        }
+        setupStatus.textContent = 'Admin created. Please sign in.';
+        setupForm.reset();
+        setupForm.style.display = 'none';
+      } catch (err) {
+        setupStatus.textContent = `Setup failed: ${err.message}`;
+      }
+    });
+  }
 }
 
 const loginSection = document.getElementById('loginSection');
@@ -259,6 +312,17 @@ async function loadUnconfirmed(){
     });
     
     if (!res.ok) {
+      // If unauthorized, clear token and show login
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem('opentrace_token');
+        sessionStorage.removeItem('opentrace_token');
+        token = null;
+        if (loginSection) loginSection.style.display = 'block';
+        if (reviewSection) reviewSection.style.display = 'none';
+        if (loginStatus) loginStatus.textContent = 'Session expired or not authorized — please sign in.';
+        profilesEl.innerHTML = '<em>Authentication required — please sign in.</em>';
+        return;
+      }
       // Fallback to old endpoint for backward compatibility
       res = await fetch('/admin/review-profiles', { 
         headers: { 'Authorization': 'Bearer ' + token }
@@ -2010,6 +2074,17 @@ const personCreateForm = document.getElementById('personCreateForm');
 const personUpdateForm = document.getElementById('personUpdateForm');
 const personDeleteForm = document.getElementById('personDeleteForm');
 const personStatusMsg = document.getElementById('personStatusMsg');
+let personStatusTimer = null;
+
+function setPersonStatus(msg, isError = false, timeout = 8000) {
+  if (!personStatusMsg) return;
+  personStatusMsg.textContent = msg;
+  personStatusMsg.style.color = isError ? '#b00020' : '#0a7f00';
+  if (personStatusTimer) clearTimeout(personStatusTimer);
+  if (timeout) {
+    personStatusTimer = setTimeout(() => { personStatusMsg.textContent = ''; personStatusMsg.style.color = ''; }, timeout);
+  }
+}
 
 if (personCreateForm) {
   personCreateForm.addEventListener('submit', async (e) => {
@@ -2017,11 +2092,11 @@ if (personCreateForm) {
     // Require admin auth before attempting to create
     const authHeaders = getAuthHeaders();
     if (!authHeaders || !authHeaders.Authorization) {
-      personStatusMsg.textContent = 'Admin sign-in required to create persons. Please sign in via the Login box above.';
+      setPersonStatus('Admin sign-in required to create persons. Please sign in via the Login box above.', true);
       return;
     }
 
-    personStatusMsg.textContent = 'Creating person...';
+    setPersonStatus('Creating person...');
     try {
       const givenName = document.getElementById('personGiven').value.trim() || null;
       const familyName = document.getElementById('personFamily').value.trim() || null;
@@ -2061,34 +2136,45 @@ if (personCreateForm) {
         try {
           const verify = await fetchJson(`/api/persons/${encodeURIComponent(res.pfif_id)}`, { headers: { ...authHeaders } });
           if (verify && verify.person) {
-            personStatusMsg.textContent = `Person created: ${res.pfif_id}`;
+            setPersonStatus(`Person created: ${res.pfif_id}`);
             personCreateForm.reset();
+            // Refresh admin lists to show the newly created person
+            if (typeof loadUnconfirmed === 'function') await loadUnconfirmed();
+            if (loadPersonsBtn) loadPersonsBtn.click();
           } else {
-            personStatusMsg.textContent = `Person created: ${res.pfif_id} (verification failed)`;
+            setPersonStatus(`Person created: ${res.pfif_id} (verification returned unexpected body)`, false);
+            personCreateForm.reset();
+            if (typeof loadUnconfirmed === 'function') await loadUnconfirmed();
+            if (loadPersonsBtn) loadPersonsBtn.click();
             console.warn('Person created but verification returned unexpected body', verify);
           }
         } catch (ve) {
           console.error('Verification failed after create:', ve);
-          personStatusMsg.textContent = `Person created: ${res.pfif_id} (verification failed: ${ve.message || ve})`;
+          setPersonStatus(`Person created: ${res.pfif_id} (verification failed: ${ve.message || ve})`, false);
+          personCreateForm.reset();
+          if (typeof loadUnconfirmed === 'function') await loadUnconfirmed();
+          if (loadPersonsBtn) loadPersonsBtn.click();
         }
       } else {
-        personStatusMsg.textContent = 'Person created.';
+        setPersonStatus('Person created.');
         personCreateForm.reset();
+        if (typeof loadUnconfirmed === 'function') await loadUnconfirmed();
+        if (loadPersonsBtn) loadPersonsBtn.click();
       }
     } catch (err) {
       console.error('Failed to create person:', err);
       if (err && err.status === 401) {
-        personStatusMsg.textContent = 'Authentication failed: please sign in as an admin.';
+        setPersonStatus('Authentication failed: please sign in as an admin.', true);
       } else if (err && err.status === 409) {
-        personStatusMsg.textContent = 'Person already exists.';
+        setPersonStatus('Person already exists.', true);
       } else {
         // Try to parse error JSON body (some servers return {"detail":...})
         try {
           const body = JSON.parse(err.message || '{}');
-          if (body && body.detail) personStatusMsg.textContent = `Failed: ${body.detail}`;
-          else personStatusMsg.textContent = 'Failed to create person: ' + (err.message || 'Unknown error');
+          if (body && body.detail) setPersonStatus(`Failed: ${body.detail}`, true);
+          else setPersonStatus('Failed to create person: ' + (err.message || 'Unknown error'), true);
         } catch (ex) {
-          personStatusMsg.textContent = 'Failed to create person: ' + (err.message || 'Unknown error');
+          setPersonStatus('Failed to create person: ' + (err.message || 'Unknown error'), true);
         }
       }
     }

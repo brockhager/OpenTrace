@@ -296,6 +296,44 @@ async def create_admin(request: AdminCreateRequest, admin: AdminUser = Depends(g
     await db.commit()
     return {"message": "admin_created", "email": request.email}
 
+
+@router.post("/setup")
+async def setup_admin(request: AdminCreateRequest, db: AsyncSession = Depends(get_db_session)):
+    """Bootstrap the first admin account. Allowed only when no admin exists.
+
+    This is a one-time convenience endpoint to create an initial admin on a fresh installation.
+    It returns 403 if any admin account already exists.
+    """
+    if db is None:
+        raise HTTPException(status_code=503, detail="Database not configured")
+
+    # Check whether any admin exists
+    result = await db.execute(select(AdminUser).limit(1))
+    any_admin = result.scalar_one_or_none()
+    if any_admin:
+        raise HTTPException(status_code=403, detail="Admin setup not allowed: admin user already exists")
+
+    from auth.security import get_password_hash
+    hashed = get_password_hash(request.password)
+    new_user = AdminUser(email=request.email.strip().lower(), hashed_password=hashed, role=request.role or 'admin', is_active=True)
+    db.add(new_user)
+
+    audit = AuditLog(action="setup_admin", actor_id="system", target_id=None, details={"email": request.email})
+    db.add(audit)
+
+    await db.commit()
+    return {"message": "admin_created", "email": request.email}
+
+
+@router.get('/exists')
+async def admin_exists(db: AsyncSession = Depends(get_db_session)):
+    """Return whether an admin user exists (used by UI to detect first-run)."""
+    if db is None:
+        return {"admin_exists": False}
+    result = await db.execute(select(AdminUser).limit(1))
+    any_user = result.scalar_one_or_none()
+    return {"admin_exists": bool(any_user)}
+
 @router.post("/admins/password", dependencies=[Depends(require_admin_role("admin"))])
 async def reset_admin_password(request: AdminPasswordUpdateRequest, admin: AdminUser = Depends(get_current_admin), db: AsyncSession = Depends(get_db_session)):
     """Reset an admin user's password."""

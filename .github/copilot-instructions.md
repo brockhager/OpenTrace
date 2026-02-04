@@ -6,6 +6,17 @@
 
 **Key Principle**: Read-heavy platform that ingests, deduplicates, and serves missing persons data from official sources. Also a community submission system.
 
+### Quick Agent Guide (TL;DR) ✅
+- Purpose: write safe, privacy-first code and tests that follow existing patterns (async DB, rate-limited scrapers, explicit PII guardrails).
+- DB patterns: prefer `get_db_session()` (yields an `AsyncSession`) or `async_session` for scripts; when `DATABASE_URL` is not set `get_db_session()` yields `None` (code must handle `db is None`). See `db/session.py`.
+- Tests & auth: tests set `PYTEST_CURRENT_TEST` so DB and auth are commonly bypassed (see `auth/deps.py` & `db/session.py`); write tests that work when `db is None`.
+- Public endpoints: `/search` sanitizes input; `*` is an allowed wildcard (converted to `%`) and suspicious SQL-like queries are rejected. See `api/public.py` for examples.
+- Rate limiting & bot checks: use `RateLimiter()` dependency and `validate_user_agent()` where appropriate; blocked agents include `python-requests`, `scrapy`, etc.
+- Scrapers: follow the `scrapers/*` conventions — cache with `./cache/namus_{CASE}.json`, compute SHA-256, obey `RATE_LIMIT_DELAY` (default 5s), use `User-Agent: Opentrace/0.1.0`, and keep concurrency low (semaphore=1).
+- DB init & admin creation: repo provides `databases/db_init.sql`. `scripts/init_db.py` and `scripts/create_admin.py` are referenced in docs but may be omitted or ignored; prefer `psql < databases/db_init.sql` and a `psql` INSERT to create an admin when scripts are not present.
+- Run & test: `pip install -r requirements.txt`, `uvicorn api.main:app --reload`, `pytest tests/ -v`. On Windows activate the venv with `venv\\Scripts\\activate`.
+- Safety rules: never implement facial recognition, geolocation tracking, or private/social scraping; strip phone numbers, exact addresses, and emails on ingestion.
+
 ## Architecture
 
 ### Core Models (Actual, not aspirational)
@@ -118,6 +129,8 @@ def test_search_without_db(client):
     response = client.get("/search?q=John")
     assert response.status_code == 200  # Returns [] due to None db
 ```
+Note: the test harness sets `PYTEST_CURRENT_TEST` so `get_db_session()` yields `None` and `get_current_admin()` returns a stub admin — write tests and code to handle `db is None` and optional auth gracefully.
+
 Run: `pytest tests/ -v`
 
 ### 5. Model Patterns: PFIF Compliance
@@ -172,10 +185,15 @@ pip install -r requirements.txt
 createdb opentrace_dev
 
 # 4. Initialize schema (idempotent)
-python scripts/init_db.py
+# Preferred: use SQL from repo (safe and explicit)
+psql opentrace_dev < databases/db_init.sql
+# Note: docs reference `scripts/init_db.py` but that helper may be absent or ignored in this repo.
 
 # 5. Create admin user
-python scripts/create_admin.py
+# If present, run the helper; otherwise insert via psql:
+# python scripts/create_admin.py
+psql -d opentrace_dev -c "INSERT INTO admin_user (email, hashed_password, role, is_active) VALUES ('you@example.com','<bcrypt-hash>','admin',true);"
+# `create_admin.py` may be listed in .gitignore; manual psql insert is reliable.
 
 # 6. Run application
 uvicorn api.main:app --reload
@@ -187,9 +205,9 @@ pytest tests/ -v
 ### Railway Deployment Checklist
 1. **Project setup**: `railway login && railway init` (creates Railway project with PostgreSQL)
 2. **Environment**: Railway auto-creates `RAILWAY_DATABASE_URL`; app converts it to async format
-3. **Schema init**: `railway run python scripts/init_db.py`
+3. **Schema init**: `railway run psql < databases/db_init.sql` (or `railway run python scripts/init_db.py` if present)
 4. **Verify tables**: `railway run psql -c "\dt"` (should show: person, location, event, source, admin_user, etc.)
-5. **Create admin**: `railway run python scripts/create_admin.py`
+5. **Create admin**: `railway run psql -c "INSERT INTO admin_user (email, hashed_password, role) VALUES ('your-admin@example.com', '\$2b\$12\$your_bcrypt_hash_here', 'admin');"` (or `railway run python scripts/create_admin.py` if present)
 6. **Monitor**: `railway logs -s api` to tail logs
 
 ### Common Issues & Fixes
