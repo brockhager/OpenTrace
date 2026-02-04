@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Edit Person - Opentrace</title>
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="logo">Opentrace</div>
+    <nav class="nav-links">
+      <a href="/">Home</a>
+      <a href="/persons.html">Persons</a>
+      <a href="/locations.html">Locations</a>
+      <a href="/events.html">Events</a>
+      <a href="/sources.html">Sources</a>
+      <a href="/admin.html">Admin</a>
+    </nav>
+  </header>
+
+  <main class="container page-container">
+    <h2>Edit Person</h2>
+    <div id="editStatus" class="status"></div>
+
+    <form id="personEditForm" class="form-grid">
+      <input type="hidden" id="editPfif" />
+
+      <label>Given Name <input id="editGiven" type="text" /></label>
+      <label>Family Name <input id="editFamily" type="text" /></label>
+      <label>Alternate Names (comma-separated) <input id="editAlternate" type="text" /></label>
+      <label>Age at Disappearance <input id="editAge" type="number" min="0" /></label>
+      <label>Sex <input id="editSex" type="text" /></label>
+      <label>Status
+        <select id="editStatusSelect">
+          <option value="missing">missing</option>
+          <option value="unidentified">unidentified</option>
+          <option value="found">found</option>
+          <option value="died">died</option>
+          <option value="other">other</option>
+        </select>
+      </label>
+      <label>Date Last Seen <input id="editLastSeen" type="date" /></label>
+      <label>Date Reported <input id="editReported" type="date" /></label>
+      <label>Primary Source <input id="editPrimarySource" type="text" /></label>
+      <label>Source URL <input id="editSourceUrl" type="url" /></label>
+      <label>Confirmed <select id="editConfirmed"><option value="true">Yes</option><option value="false">No</option></select></label>
+      <label>Active <select id="editActive"><option value="true">Active</option><option value="false">Inactive</option></select></label>
+
+      <div style="grid-column: 1 / -1; display:flex; gap:0.5rem;">
+        <button id="saveEditBtn" type="button">Save</button>
+        <button id="cancelEditBtn" type="button" class="danger">Cancel</button>
+      </div>
+    </form>
+  </main>
+
+  <footer class="site-footer">Data from NamUs, Interpol, Charley Project</footer>
+  <script src="/static/app.js"></script>
+  <script>
+    (async function () {
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const statusEl = document.getElementById('editStatus');
+      if (!id) {
+        statusEl.textContent = 'No person id provided.';
+        return;
+      }
+
+      // Require admin auth: if no token, redirect to admin login with next param
+      const authHeaders = getAuthHeaders();
+      if (!authHeaders || !authHeaders.Authorization) {
+        window.location.href = `/admin.html?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+
+      statusEl.textContent = 'Loading...';
+      try {
+        const payload = await fetchJson(`/api/persons/${encodeURIComponent(id)}`);
+        const person = payload.person;
+        document.getElementById('editPfif').value = person.pfif_id;
+        document.getElementById('editGiven').value = person.given_name || '';
+        document.getElementById('editFamily').value = person.family_name || '';
+        document.getElementById('editAlternate').value = (person.alternate_names || []).join(', ');
+        document.getElementById('editAge').value = person.age_at_disappearance || '';
+        document.getElementById('editSex').value = person.sex || '';
+        document.getElementById('editStatusSelect').value = person.status || 'missing';
+        document.getElementById('editLastSeen').value = person.date_last_seen ? person.date_last_seen.split('T')[0] : '';
+        document.getElementById('editReported').value = person.date_reported ? person.date_reported.split('T')[0] : '';
+        document.getElementById('editPrimarySource').value = person.primary_source || '';
+        document.getElementById('editSourceUrl').value = person.source_url || '';
+        document.getElementById('editConfirmed').value = person.is_confirmed ? 'true' : 'false';
+        document.getElementById('editActive').value = person.is_active ? 'true' : 'false';
+        statusEl.textContent = '';
+      } catch (e) {
+        console.error('Failed to load person for edit:', e);
+        statusEl.textContent = 'Failed to load person.';
+        return;
+      }
+
+      document.getElementById('cancelEditBtn').addEventListener('click', () => {
+        window.history.back();
+      });
+
+      document.getElementById('saveEditBtn').addEventListener('click', async () => {
+        statusEl.textContent = 'Saving...';
+        const pfif = document.getElementById('editPfif').value;
+        const payload = {
+          given_name: document.getElementById('editGiven').value.trim() || undefined,
+          family_name: document.getElementById('editFamily').value.trim() || undefined,
+          alternate_names: (document.getElementById('editAlternate').value || '').split(',').map(s => s.trim()).filter(Boolean) || undefined,
+          age_at_disappearance: document.getElementById('editAge').value ? parseInt(document.getElementById('editAge').value, 10) : undefined,
+          sex: document.getElementById('editSex').value.trim() || undefined,
+          status: document.getElementById('editStatusSelect').value || undefined,
+          date_last_seen: document.getElementById('editLastSeen').value || undefined,
+          date_reported: document.getElementById('editReported').value || undefined,
+          primary_source: document.getElementById('editPrimarySource').value.trim() || undefined,
+          source_url: document.getElementById('editSourceUrl').value.trim() || undefined,
+          is_confirmed: document.getElementById('editConfirmed').value === 'true',
+          is_active: document.getElementById('editActive').value === 'true'
+        };
+        // Remove undefined values
+        Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+        try {
+          await fetchJson(`/api/persons/${encodeURIComponent(pfif)}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+            body: JSON.stringify(payload)
+          });
+          statusEl.textContent = 'Saved.';
+          // small delay then go back to admin overview
+          setTimeout(() => { window.location.href = '/admin.html'; }, 800);
+        } catch (e) {
+          console.error('Save failed:', e);
+          try {
+            const body = JSON.parse(e.message || '{}');
+            statusEl.textContent = body.detail || (e.message || 'Save failed');
+          } catch (ex) {
+            statusEl.textContent = e.message || 'Save failed';
+          }
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

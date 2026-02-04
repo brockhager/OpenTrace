@@ -366,6 +366,10 @@ async def admin_page():
 async def profile_page():
     return FileResponse("frontend/profile.html")
 
+@app.get("/person-edit.html")
+async def person_edit_page():
+    return FileResponse("frontend/person-edit.html")
+
 @app.get("/persons.html")
 async def persons_page():
     return FileResponse("frontend/persons.html")

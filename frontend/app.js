@@ -662,6 +662,7 @@ if (loadPersonsBtn) {
           </div>
           <div class="card-actions">
             <a href="/profile.html?id=${encodeURIComponent(p.pfif_id)}" target="_blank">View</a> |
+            <a href="/person-edit.html?id=${encodeURIComponent(p.pfif_id)}" target="_blank">Edit</a> |
             <button class="danger delete-person" data-pfif="${encodeURIComponent(p.pfif_id)}">Delete</button>
           </div>
         </div>
